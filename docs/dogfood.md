@@ -24,16 +24,31 @@ Create a **per-deploy** GitHub App (not the multi-tenant uinaf app):
 9. Optional: generate an App private key only if you also enroll agents through
    this App (Glitch uses its own App PEM).
 
-Store secrets outside git:
+Store secrets outside git. Canonical copy lives in `uinaf/vault` as
+`shared/uinaf-attach-github-app` (`ATTACH_GITHUB_CLIENT_ID`,
+`GITHUB_APP_CLIENT_ID`, `GITHUB_APP_CLIENT_SECRET`).
+
+Worker (production):
 
 ```bash
 cd apps/api
+# from vault: sops exec-env … secrets/shared/uinaf-attach-github-app.sops.json -- \
 wrangler secret put GITHUB_APP_CLIENT_ID
 wrangler secret put GITHUB_APP_CLIENT_SECRET
 ```
 
-GitHub Environment `production` should hold the same for Actions deploy, plus
-`CLOUDFLARE_API_TOKEN`. Set variable `CLOUDFLARE_ACCOUNT_ID=b7ef10ce7bc4d0568bf3920b52402642`.
+Local CLI / Worker env:
+
+```bash
+# from uinaf/vault
+sops exec-env --same-process secrets/shared/uinaf-attach-github-app.sops.json -- \
+  bash -lc 'cd ~/projects/uinaf/attach && node apps/cli/dist/attach.mjs login'
+```
+
+GitHub Environment `production` cannot use `GITHUB_*` secret names. Keep App
+credentials on the Worker via `wrangler secret`; Actions deploy still needs
+`CLOUDFLARE_API_TOKEN` and variable
+`CLOUDFLARE_ACCOUNT_ID=b7ef10ce7bc4d0568bf3920b52402642`.
 
 ## 2. Pin Glitch agent public key
 
@@ -119,7 +134,7 @@ at most once; if the principal is disabled, hard-fail.
 
 ## Remaining human steps
 
-- [ ] Create Attach GitHub App and enable device flow
-- [ ] Put client id/secret into wrangler secrets + GHA `production`
+- [x] Create Attach GitHub App and enable device flow
+- [x] Put client id/secret into wrangler secrets + vault (`shared/uinaf-attach-github-app`)
 - [ ] Export Glitch App public key into `AGENT_REGISTRY`
 - [ ] Confirm `attach.uinaf.dev` custom domain inventory import is empty-plan clean
