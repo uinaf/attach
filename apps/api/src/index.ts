@@ -67,7 +67,7 @@ async function handleEnrollAgent(env: Env, request: Request): Promise<Response> 
   if (!jwt) return error(401, "missing_token");
 
   try {
-    const identity = await verifyAgentJwt(env, jwt, agentAudience(env, request));
+    const identity = await verifyAgentJwt(env, jwt, agentAudience(env));
     const principal = await ensurePrincipal(
       env.DB,
       principalId("app", identity.appId),

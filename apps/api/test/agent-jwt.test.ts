@@ -3,7 +3,7 @@ import { exportSPKI, generateKeyPair, SignJWT } from "jose";
 import { AgentAuthError, verifyAgentJwt } from "../src/agent-jwt.ts";
 import type { Env } from "../src/env.ts";
 import { agentAudience } from "../src/env.ts";
-import { JTI_RETENTION_MS } from "@uinaf/attach-shared";
+import { ATTACH_AUDIENCE, JTI_RETENTION_MS } from "@uinaf/attach-shared";
 
 function jtiNamespace(store: Map<string, number>): DurableObjectNamespace {
   return {
@@ -51,16 +51,12 @@ async function mint(
 describe("agentAudience", () => {
   it("uses ATTACH_PUBLIC_BASE host when set", () => {
     const env = { ATTACH_PUBLIC_BASE: "https://attach.example.test/" } as Env;
-    expect(agentAudience(env, new Request("https://ignored.example/v1/enroll/agent"))).toBe(
-      "attach.example.test",
-    );
+    expect(agentAudience(env)).toBe("attach.example.test");
   });
 
-  it("falls back to request host when ATTACH_PUBLIC_BASE is unset", () => {
+  it("falls back to ATTACH_AUDIENCE when ATTACH_PUBLIC_BASE is unset", () => {
     const env = {} as Env;
-    expect(agentAudience(env, new Request("https://attach.uinaf.dev/v1/enroll/agent"))).toBe(
-      "attach.uinaf.dev",
-    );
+    expect(agentAudience(env)).toBe(ATTACH_AUDIENCE);
   });
 });
 

@@ -24,37 +24,38 @@ Reject any flow that uses bare GitHub API JWTs, `jku`, or remote JWKS.
 
 ## Enroll (credential-safe)
 
-Write the Authorization header to a temp file (mode `0600`) so the token is not
-visible in process argv. Parse the response in-process; **do not** print the
-JSON body to chat or logs.
+Prefer language-native HTTP (`fetch`, etc.) that sets `Authorization` from
+memory and parses JSON in-process — never put the bearer in argv, never print
+`att_` to chat or logs.
+
+If you must use curl, keep secrets in mode-`0600` temp files and always delete
+them (including on failure):
 
 ```bash
 base="${ATTACH_API_BASE:-https://attach.uinaf.dev}"
-hdr="$(mktemp)"
-chmod 600 "$hdr"
+hdr="$(mktemp)"; out="$(mktemp)"
+chmod 600 "$hdr" "$out"
+trap 'rm -f "$hdr" "$out"' EXIT
 printf 'Authorization: Bearer %s\nAccept: application/json\n' "$ATTACH_AGENT_JWT" >"$hdr"
-# capture body to a variable or file your runtime owns — never `cat` att_ into chat
-curl -sS -X POST "$base/v1/enroll/agent" -H @"$hdr" -o enroll.json
-rm -f "$hdr"
-# then: read enroll.json → take .token into a secret var; delete enroll.json
+curl -sS -X POST "$base/v1/enroll/agent" -H @"$hdr" -o "$out"
+# parse "$out" in-process for .token → secret var only; never cat att_ into chat
 ```
 
 Expect JSON with `token` (`att_…`), `key_id`, `principal` (`app:<id>`). If the
 response indicates the principal is disabled, hard-fail.
 
-Prefer language-native HTTP (fetch, etc.) that sets headers from memory when
-available — same rule: no bearer in argv, no `att_` in transcripts.
-
 ## Upload
+
+Same rules: prefer native HTTP. Curl pattern:
 
 ```bash
 base="${ATTACH_API_BASE:-https://attach.uinaf.dev}"
-hdr="$(mktemp)"
-chmod 600 "$hdr"
+hdr="$(mktemp)"; out="$(mktemp)"
+chmod 600 "$hdr" "$out"
+trap 'rm -f "$hdr" "$out"' EXIT
 printf 'Authorization: Bearer %s\nContent-Type: image/png\n' "$ATTACH_ATT_TOKEN" >"$hdr"
-curl -sS -X PUT "$base/v1/objects" -H @"$hdr" --data-binary @"$FILE" -o put.json
-rm -f "$hdr"
-# read put.json for url + preview_url only; never echo Authorization or att_
+curl -sS -X PUT "$base/v1/objects" -H @"$hdr" --data-binary @"$FILE" -o "$out"
+# read url + preview_url from "$out" only
 ```
 
 Optional `repo` / `pr` metadata per Worker/CLI contract. Success only when the

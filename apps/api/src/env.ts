@@ -33,10 +33,16 @@ export function publicBase(env: Env, request: Request): string {
   return `${url.protocol}//${url.host}`;
 }
 
-/** JWT `aud` host for agent enroll — matches ADR (host of ATTACH_PUBLIC_BASE). */
-export function agentAudience(env: Env, request: Request): string {
+/**
+ * JWT `aud` host for agent enroll — host of ATTACH_PUBLIC_BASE when set.
+ * Never use the request Host (attacker-controlled). If the env var is unset,
+ * fall back to the published default host constant.
+ */
+export function agentAudience(env: Env): string {
+  const base = env.ATTACH_PUBLIC_BASE?.trim();
+  if (!base) return ATTACH_AUDIENCE;
   try {
-    return new URL(publicBase(env, request)).host;
+    return new URL(base.replace(/\/$/, "")).host;
   } catch {
     return ATTACH_AUDIENCE;
   }

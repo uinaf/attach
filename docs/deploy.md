@@ -38,12 +38,15 @@ Binding names live in `apps/api/wrangler.toml`. Keep deploy ids out of git.
 ### R2 lifecycle (required for TTL)
 
 In the Cloudflare dashboard (or API) for the attach R2 bucket, add a lifecycle
-rule that **deletes objects 730 days after upload** (or AbortIncomplete / age
-equivalent). Verify before enabling on production:
+rule that deletes objects **after** the application TTL with slack — recommend
+**760 days after upload** (not 730). A threshold equal to or tighter than
+`OBJECT_TTL_MS` (~2 years / leap-day skew) can remove still-live objects.
+
+Verify before enabling on production:
 
 - Rule applies to the media bucket used by the Worker (`BUCKET` binding).
-- Age threshold ≥ application TTL (`OBJECT_TTL_MS` ≈ 2 years); tighter rules
-  can delete still-live objects.
+- Age threshold must trail application `expires_at` (use ≥ 760 days unless you
+  intentionally shorten TTL in code).
 - After enablement, confirm a fresh put is not deleted early (spot-check
   object age in the bucket UI).
 
