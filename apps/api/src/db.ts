@@ -353,31 +353,28 @@ export async function softDeleteObject(
   principalId: string,
   now = Date.now(),
 ): Promise<boolean> {
-  const live = await db
-    .prepare(
-      `SELECT size_bytes FROM objects
-       WHERE object_key = ? AND principal_id = ? AND deleted_at IS NULL`,
-    )
-    .bind(objectKey, principalId)
-    .first<{ size_bytes: number }>();
-  if (!live) return false;
-
-  // D1 batch is transactional: soft-delete + usage decrement commit together.
   const results = await db.batch([
+    db
+      .prepare(
+        `UPDATE principal_usage
+         SET live_bytes = MAX(0, live_bytes - (
+           SELECT size_bytes FROM objects
+           WHERE object_key = ? AND principal_id = ? AND deleted_at IS NULL
+         ))
+         WHERE principal_id = ? AND EXISTS (
+           SELECT 1 FROM objects
+           WHERE object_key = ? AND principal_id = ? AND deleted_at IS NULL
+         )`,
+      )
+      .bind(objectKey, principalId, principalId, objectKey, principalId),
     db
       .prepare(
         `UPDATE objects SET deleted_at = ?
          WHERE object_key = ? AND principal_id = ? AND deleted_at IS NULL`,
       )
       .bind(now, objectKey, principalId),
-    db
-      .prepare(
-        `UPDATE principal_usage SET live_bytes = MAX(0, live_bytes - ?)
-         WHERE principal_id = ?`,
-      )
-      .bind(live.size_bytes, principalId),
   ]);
-  return (results[0]?.meta.changes ?? 0) > 0;
+  return (results[1]?.meta.changes ?? 0) > 0;
 }
 
 export async function bulkRevokePrincipalKeys(
