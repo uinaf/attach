@@ -143,27 +143,22 @@ export function putWindowStart(now: number): number {
 export const PUT_RESERVATION_TTL_MS = 15 * 60 * 1000;
 
 async function reclaimExpiredReservations(db: D1Database, now: number): Promise<void> {
-  // Drop expired storage holds and bill their hour window so abandoned
-  // in-flight puts still consume rate after TTL (keeps the claim-time cap honest).
-  const expired = await db
-    .prepare(
-      `DELETE FROM put_reservations WHERE expires_at <= ?
-       RETURNING principal_id, window_start`,
-    )
-    .bind(now)
-    .all<{ principal_id: string; window_start: number }>();
-
-  for (const row of expired.results ?? []) {
-    await db
+  // Bill abandoned in-flight puts, then drop the rows — one D1 batch so the
+  // hourly cap never sees a gap between delete and quota_windows update.
+  await db.batch([
+    db
       .prepare(
         `INSERT INTO quota_windows (principal_id, window_start, puts)
-         VALUES (?, ?, 1)
+         SELECT principal_id, window_start, COUNT(*)
+         FROM put_reservations
+         WHERE expires_at <= ?
+         GROUP BY principal_id, window_start
          ON CONFLICT(principal_id, window_start) DO UPDATE
-         SET puts = puts + 1`,
+         SET puts = puts + excluded.puts`,
       )
-      .bind(row.principal_id, row.window_start)
-      .run();
-  }
+      .bind(now),
+    db.prepare("DELETE FROM put_reservations WHERE expires_at <= ?").bind(now),
+  ]);
 }
 
 /** Recompute committed live_bytes from live objects (reservations stay separate). */
