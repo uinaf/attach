@@ -155,28 +155,32 @@ export async function claimPutQuota(
 
   const windowStart = putWindowStart(now);
 
-  // Drop TTL-expired bytes from the counter before claiming (not soft-deleted).
-  await db
+  // Soft-delete TTL-expired rows and drop their bytes without wiping
+  // in-flight reservations (never reset live_bytes from a live SUM).
+  const expired = await db
     .prepare(
-      `INSERT INTO principal_usage (principal_id, live_bytes)
-       VALUES (
-         ?,
-         COALESCE(
-           (SELECT SUM(size_bytes) FROM objects
-            WHERE principal_id = ? AND deleted_at IS NULL AND expires_at > ?),
-           0
-         )
-       )
-       ON CONFLICT(principal_id) DO UPDATE
-       SET live_bytes = COALESCE(
-         (SELECT SUM(size_bytes) FROM objects
-          WHERE principal_id = excluded.principal_id
-            AND deleted_at IS NULL AND expires_at > ?),
-         0
-       )`,
+      `SELECT COALESCE(SUM(size_bytes), 0) AS bytes FROM objects
+       WHERE principal_id = ? AND deleted_at IS NULL AND expires_at <= ?`,
     )
-    .bind(principalId, principalId, now, now)
-    .run();
+    .bind(principalId, now)
+    .first<{ bytes: number }>();
+  const expiredBytes = expired?.bytes ?? 0;
+  if (expiredBytes > 0) {
+    await db.batch([
+      db
+        .prepare(
+          `UPDATE objects SET deleted_at = ?
+           WHERE principal_id = ? AND deleted_at IS NULL AND expires_at <= ?`,
+        )
+        .bind(now, principalId, now),
+      db
+        .prepare(
+          `UPDATE principal_usage SET live_bytes = MAX(0, live_bytes - ?)
+           WHERE principal_id = ?`,
+        )
+        .bind(expiredBytes, principalId),
+    ]);
+  }
 
   const rate = await db
     .prepare(
@@ -192,15 +196,17 @@ export async function claimPutQuota(
     throw new ApiError(429, "rate_quota");
   }
 
+  // INSERT…SELECT WHERE caps the first-row path; ON CONFLICT WHERE caps updates.
   const storage = await db
     .prepare(
       `INSERT INTO principal_usage (principal_id, live_bytes)
-       VALUES (?, ?)
+       SELECT ?, ?
+       WHERE ? <= ?
        ON CONFLICT(principal_id) DO UPDATE
        SET live_bytes = live_bytes + excluded.live_bytes
        WHERE live_bytes + excluded.live_bytes <= ?`,
     )
-    .bind(principalId, sizeBytes, STORAGE_BYTES_LIMIT)
+    .bind(principalId, sizeBytes, sizeBytes, STORAGE_BYTES_LIMIT, STORAGE_BYTES_LIMIT)
     .run();
   if ((storage.meta.changes ?? 0) === 0) {
     await db

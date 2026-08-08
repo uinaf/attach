@@ -56,14 +56,16 @@ export async function handlePut(env: Env, request: Request, auth: AuthedKey): Pr
   const now = Date.now();
   const { windowStart } = await claimPutQuota(env.DB, auth.principal.id, body.byteLength, now);
 
-  const objectKey = mintObjectKey();
-  const digest = await digestBody(body);
   const expiresAt = now + OBJECT_TTL_MS;
   const repo = request.headers.get("x-attach-repo");
   const prRaw = request.headers.get("x-attach-pr");
   const pr = prRaw && /^\d+$/.test(prRaw) ? Number(prRaw) : null;
 
+  let objectKey: string | undefined;
   try {
+    objectKey = mintObjectKey();
+    const digest = await digestBody(body);
+
     await env.BUCKET.put(objectKey, body, {
       httpMetadata: {
         contentType,
@@ -76,12 +78,7 @@ export async function handlePut(env: Env, request: Request, auth: AuthedKey): Pr
         expires_at: String(expiresAt),
       },
     });
-  } catch (err) {
-    await releasePutQuota(env.DB, auth.principal.id, body.byteLength, windowStart);
-    throw err;
-  }
 
-  try {
     await recordPut(env.DB, {
       objectKey,
       principalId: auth.principal.id,
@@ -94,22 +91,24 @@ export async function handlePut(env: Env, request: Request, auth: AuthedKey): Pr
       now,
       expiresAt,
     });
+
+    return {
+      url: objectUrl(publicBase(env, request), objectKey),
+      key: objectKey,
+      content_type: contentType,
+      size: body.byteLength,
+      expires_at: new Date(expiresAt).toISOString(),
+      digest,
+    };
   } catch (err) {
-    try {
-      await env.BUCKET.delete(objectKey);
-    } catch {
-      // still release quota reservation below
+    if (objectKey) {
+      try {
+        await env.BUCKET.delete(objectKey);
+      } catch {
+        // still release quota below
+      }
     }
     await releasePutQuota(env.DB, auth.principal.id, body.byteLength, windowStart);
     throw err;
   }
-
-  return {
-    url: objectUrl(publicBase(env, request), objectKey),
-    key: objectKey,
-    content_type: contentType,
-    size: body.byteLength,
-    expires_at: new Date(expiresAt).toISOString(),
-    digest,
-  };
 }
