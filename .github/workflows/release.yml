@@ -2,6 +2,9 @@ name: Release
 
 # npm Trusted Publishing (OIDC) for @uinaf/attach-cli + uinaf-releaser.
 # Worker deploy stays in main.yml — never needs: [release].
+#
+# First-time bootstrap (human, once): manual npm publish of @uinaf/attach-cli,
+# then `npm trust github …` — see docs/releasing.md. CI owns every later release.
 
 on:
   push:
@@ -16,6 +19,9 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
+    concurrency:
+      group: verify-release-${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: true
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -58,13 +64,19 @@ jobs:
       - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
         with:
           standalone: true
+      # Fresh install in the secret-bearing job (no package-manager cache).
       - uses: voidzero-dev/setup-vp@313600b80b104eadebb9111787d37a2e83e014ca # v1.17.0
         with:
           node-version-file: ".node-version"
+          cache: false
           run-install: |
             - args: ["--frozen-lockfile"]
-      - name: Build CLI package
-        run: pnpm --filter @uinaf/attach-cli build
+      - name: Build and pack smoke
+        run: |
+          set -euo pipefail
+          pnpm --filter @uinaf/attach-cli build
+          cd apps/cli
+          npm pack --dry-run
       - name: Create release bot token
         id: release-bot
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
@@ -80,12 +92,13 @@ jobs:
         run: gh auth setup-git
       - name: Resolve release bot identity
         id: release-bot-identity
+        shell: bash
         env:
           GH_TOKEN: ${{ steps.release-bot.outputs.token }}
           APP_SLUG: ${{ steps.release-bot.outputs.app-slug }}
         run: |
           set -euo pipefail
-          user_id="$(gh api "/users/${APP_SLUG}[bot]" --jq .id)"
+          user_id="$(gh api "/users/${APP_SLUG}%5Bbot%5D" --jq .id)"
           if [[ ! "$user_id" =~ ^[0-9]+$ ]]; then
             echo "failed to resolve numeric bot user id for ${APP_SLUG}[bot]" >&2
             exit 1

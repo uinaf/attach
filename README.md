@@ -43,7 +43,7 @@ gh attach delete <url-or-key>
 
 `put` accepts GitHub tokens **never** — only `att_` keys minted at enroll.
 
-From this repo (dev): `pnpm --filter @uinaf/attach-cli build && node apps/cli/dist/attach.mjs …`
+From this repo (dev): `pnpm --filter @uinaf/attach-cli build && node apps/cli/dist/attach.js …`
 
 ## Auth summary
 

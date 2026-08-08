@@ -112,7 +112,7 @@ gh attach login
 gh attach put ./shot.png --repo uinaf/attach --pr 1
 ```
 
-Dev from this repo: `pnpm --filter @uinaf/attach-cli build && node apps/cli/dist/attach.mjs …`.
+Dev from this repo: `pnpm --filter @uinaf/attach-cli build && node apps/cli/dist/attach.js …`.
 
 ## 5. Agent dogfood (Glitch)
 

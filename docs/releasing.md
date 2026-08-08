@@ -20,29 +20,37 @@ Required on the `release` GitHub Environment:
 | `UINAF_RELEASE_APP_CLIENT_ID`   | var    | GitHub App client id for the releaser bot   |
 | `UINAF_RELEASE_APP_PRIVATE_KEY` | secret | GitHub App private key for the releaser bot |
 
-npm trusted publisher must be registered once (requires npm 2FA / browser OTP):
-
-```sh
-cd /tmp
-npm trust github @uinaf/attach-cli \
-  --file release.yml \
-  --repo uinaf/attach \
-  --env release \
-  --allow-publish -y
-```
-
 Tags use `cli-v${version}` so they stay distinct from any future non-CLI tags.
 
-## gh extension
+### First-time bootstrap (once)
 
-Install:
+`npm trust` only works on an **existing** package. Bootstrap order:
+
+Bootstrap (done for `@uinaf/attach-cli@0.1.2`):
+
+1. Manual first publish with owner login (creates the packument). Use `dist/attach.js` bins — npm strips `.mjs` bin paths.
+2. Register trusted publisher:
+
+   ```sh
+   cd /tmp
+   npx -y npm@^11.10.0 trust github @uinaf/attach-cli \
+     --repo uinaf/attach \
+     --file release.yml \
+     --env release \
+     --allow-publish \
+     --yes
+   ```
+
+Later `main` pushes own every release via OIDC — no `NPM_TOKEN`.
+
+## gh extension
 
 ```sh
 gh extension install uinaf/gh-attach
 gh attach login
 ```
 
-The extension repo is a thin Node wrapper around the published `@uinaf/attach-cli` package (`npx`).
+Thin `npx` wrapper around `@uinaf/attach-cli`. If another extension already owns `gh attach`, uninstall it first or use `npm i -g @uinaf/attach-cli` → `attach …`.
 
 ## Consumer install (npm)
 
