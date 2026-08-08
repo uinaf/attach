@@ -33,7 +33,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up Tessl
-        uses: tesslio/setup-tessl@33e1c9253e3673f28e1b8949475b250dbd57918e # v2
+        uses: tesslio/setup-tessl@33e1c9253e3673f28e1b8949475b250dbd57918e
         with:
           version: "0.94.0"
           token: ${{ secrets.TESSL_TOKEN }}
