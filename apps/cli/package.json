@@ -1,0 +1,25 @@
+{
+  "name": "@uinaf/attach-cli",
+  "version": "0.1.0",
+  "private": true,
+  "bin": {
+    "attach": "./dist/attach.mjs",
+    "gh-attach": "./dist/attach.mjs"
+  },
+  "type": "module",
+  "scripts": {
+    "dev": "vp pack --watch",
+    "check": "vp check",
+    "test": "vp test run",
+    "build": "vp pack"
+  },
+  "dependencies": {
+    "@uinaf/attach-shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}

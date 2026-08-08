@@ -1,0 +1,21 @@
+{
+  "name": "@uinaf/attach-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vp dev",
+    "check": "vp check",
+    "build": "vp build",
+    "preview": "vp preview"
+  },
+  "dependencies": {
+    "@uinaf/design": "github:uinaf/design#main"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}

@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>attach · uinaf</title>
+    <meta
+      name="description"
+      content="Self-hosted Cloudflare kit for PR and validation media uploads."
+    />
+    <link rel="stylesheet" href="https://cdn.uinaf.dev/fonts/berkeley-mono/variable/font.css" />
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <div class="label">uinaf · attach</div>
+      <h1>attach</h1>
+      <p>
+        upload pr and validation media to a private r2 bucket. humans enroll via the attach github
+        app; agents exchange a short-lived jwt. puts use
+        <code>att_</code> keys only.
+      </p>
+      <p class="actions">
+        <a href="https://github.com/uinaf/attach">github ↗</a>
+        <a href="/v1/health">health</a>
+        <a href="https://design.uinaf.dev">design</a>
+      </p>
+      <pre class="snippet">
+gh attach login
+gh attach put ./shot.png --repo uinaf/foo --pr 12
+gh attach delete &lt;url&gt;</pre>
+    </main>
+  </body>
+</html>

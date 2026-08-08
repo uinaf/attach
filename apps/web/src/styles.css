@@ -1,0 +1,74 @@
+@import "@uinaf/design/css";
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(
+      1200px 600px at 10% -10%,
+      color-mix(in srgb, var(--accent) 18%, transparent),
+      transparent
+    ),
+    var(--bg);
+  color: var(--fg);
+  font: var(--text-base) / var(--leading-base) var(--font-mono);
+}
+
+.shell {
+  max-width: 36rem;
+  margin: 0 auto;
+  padding: 64px 20px 96px;
+}
+
+.label {
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
+h1 {
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-regular);
+  line-height: var(--leading-tight);
+  margin: 12px 0 16px;
+  color: var(--fg-strong);
+}
+
+p {
+  margin: 0 0 16px;
+  color: var(--fg-muted);
+  max-width: 48ch;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+a {
+  color: var(--fg);
+  text-decoration-color: var(--border-strong);
+}
+
+a:hover {
+  color: var(--accent);
+}
+
+code,
+.snippet {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+
+.snippet {
+  margin-top: 32px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg-elevated, var(--neutral-925)) 90%, transparent);
+  color: var(--fg);
+  overflow-x: auto;
+  white-space: pre-wrap;
+}

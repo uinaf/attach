@@ -1,0 +1,32 @@
+{
+  "name": "attach",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Self-hosted Cloudflare kit for PR/validation media uploads",
+  "type": "module",
+  "scripts": {
+    "ready": "vp check && vp run -r test && vp run -t @uinaf/attach-web#build && vp run -t @uinaf/attach-cli#build",
+    "verify": "vp run ready",
+    "check": "vp check",
+    "test": "vp run -r test",
+    "build": "vp run -t @uinaf/attach-web#build && vp run -t @uinaf/attach-cli#build",
+    "dev": "vp run @uinaf/attach-web#dev",
+    "deploy": "vp run -t @uinaf/attach-web#build && pnpm --filter @uinaf/attach-api deploy",
+    "prepare": "vp config --no-agent"
+  },
+  "devDependencies": {
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "11.20.0",
+      "onFail": "download"
+    }
+  },
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "packageManager": "pnpm@11.20.0"
+}

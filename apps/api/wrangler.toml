@@ -1,0 +1,44 @@
+name = "attach"
+main = "src/index.ts"
+compatibility_date = "2025-08-01"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = true
+preview_urls = false
+
+# Custom domain attach.uinaf.dev is bound in uinaf/infra
+# (cloudflare_workers_custom_domain) after the Worker exists.
+
+[assets]
+directory = "../web/dist"
+binding = "ASSETS"
+# API and object routes must hit the Worker; landing falls through to assets.
+run_worker_first = ["/v1/*", "/o/*"]
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "attach"
+jurisdiction = "eu"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "attach"
+database_id = "local-attach-placeholder"
+migrations_dir = "migrations"
+
+[[durable_objects.bindings]]
+name = "JTI"
+class_name = "JtiStore"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["JtiStore"]
+
+[vars]
+ALLOWED_GITHUB_USER_IDS = "9790196"
+ATTACH_PUBLIC_BASE = "https://attach.uinaf.dev"
+# GITHUB_APP_CLIENT_ID and AGENT_REGISTRY are set via `wrangler secret` / GHA env.
+# AGENT_REGISTRY example:
+# [{"app_id":"4455325","slug":"glitch418x","public_keys":[{"pem":"-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----"}]}]
+
+[observability]
+enabled = true
