@@ -1,6 +1,6 @@
 {
   "name": "@uinaf/attach-cli",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "CLI for attach — upload PR/validation media to a self-hosted Cloudflare kit",
   "homepage": "https://attach.uinaf.dev",
   "bugs": {
