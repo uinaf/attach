@@ -4,7 +4,6 @@ export type Env = {
   BUCKET: R2Bucket;
   DB: D1Database;
   JTI: DurableObjectNamespace;
-  ASSETS?: Fetcher;
   GITHUB_APP_CLIENT_ID: string;
   GITHUB_APP_CLIENT_SECRET: string;
   ALLOWED_GITHUB_USER_IDS: string;

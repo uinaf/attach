@@ -134,11 +134,8 @@ export default {
         return new Response(null, { status: res.status, headers: res.headers });
       }
 
-      // Landing / static assets
-      if (env.ASSETS) {
-        return env.ASSETS.fetch(request);
-      }
-
+      // Landing/static assets are served by the Workers assets pipeline
+      // (run_worker_first only invokes this script for /v1/* and /o/*).
       return error(404, "not_found");
     } catch (err) {
       if (err instanceof ApiError) return error(err.status, err.code);
