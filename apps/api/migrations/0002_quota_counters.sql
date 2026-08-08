@@ -17,3 +17,11 @@ SELECT principal_id, COALESCE(SUM(size_bytes), 0)
 FROM objects
 WHERE deleted_at IS NULL AND expires_at > (CAST(strftime('%s', 'now') AS INTEGER) * 1000)
 GROUP BY principal_id;
+
+-- Soft-delete already-expired rows without touching live_bytes (they were
+-- never counted above). Prevents the first claimPutQuota cleanup from
+-- subtracting uncounted bytes and driving the counter below real usage.
+UPDATE objects
+SET deleted_at = (CAST(strftime('%s', 'now') AS INTEGER) * 1000)
+WHERE deleted_at IS NULL
+  AND expires_at <= (CAST(strftime('%s', 'now') AS INTEGER) * 1000);

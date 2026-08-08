@@ -155,31 +155,25 @@ export async function claimPutQuota(
 
   const windowStart = putWindowStart(now);
 
-  // Soft-delete TTL-expired rows and drop their bytes without wiping
-  // in-flight reservations (never reset live_bytes from a live SUM).
-  const expired = await db
+  // Soft-delete TTL-expired rows; decrement only bytes this claim actually
+  // marked (RETURNING), so concurrent claims cannot double-subtract.
+  const marked = await db
     .prepare(
-      `SELECT COALESCE(SUM(size_bytes), 0) AS bytes FROM objects
-       WHERE principal_id = ? AND deleted_at IS NULL AND expires_at <= ?`,
+      `UPDATE objects SET deleted_at = ?
+       WHERE principal_id = ? AND deleted_at IS NULL AND expires_at <= ?
+       RETURNING size_bytes`,
     )
-    .bind(principalId, now)
-    .first<{ bytes: number }>();
-  const expiredBytes = expired?.bytes ?? 0;
+    .bind(now, principalId, now)
+    .all<{ size_bytes: number }>();
+  const expiredBytes = (marked.results ?? []).reduce((sum, row) => sum + row.size_bytes, 0);
   if (expiredBytes > 0) {
-    await db.batch([
-      db
-        .prepare(
-          `UPDATE objects SET deleted_at = ?
-           WHERE principal_id = ? AND deleted_at IS NULL AND expires_at <= ?`,
-        )
-        .bind(now, principalId, now),
-      db
-        .prepare(
-          `UPDATE principal_usage SET live_bytes = MAX(0, live_bytes - ?)
-           WHERE principal_id = ?`,
-        )
-        .bind(expiredBytes, principalId),
-    ]);
+    await db
+      .prepare(
+        `UPDATE principal_usage SET live_bytes = MAX(0, live_bytes - ?)
+         WHERE principal_id = ?`,
+      )
+      .bind(expiredBytes, principalId)
+      .run();
   }
 
   const rate = await db
