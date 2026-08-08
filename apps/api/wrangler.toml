@@ -2,7 +2,7 @@ name = "attach"
 main = "src/index.ts"
 compatibility_date = "2026-08-07"
 compatibility_flags = ["nodejs_compat"]
-workers_dev = true
+workers_dev = false
 preview_urls = false
 
 # Bind the public hostname to this Worker after the script exists.
@@ -34,11 +34,18 @@ class_name = "JtiStore"
 tag = "v1"
 new_sqlite_classes = ["JtiStore"]
 
-# Plain-text Worker vars are supplied at deploy time (not committed here):
+# Safe plain-text defaults are overridden by deploy.ts:
 #   ALLOWED_GITHUB_USER_IDS, ATTACH_PUBLIC_BASE
 # Secrets (not vars — CF forbids the same binding in both):
 #   GITHUB_APP_CLIENT_ID / GITHUB_APP_CLIENT_SECRET
 #   AGENT_REGISTRY — JSON agent allowlist + public keys (see docs/deploy.md)
+
+[secrets]
+required = ["GITHUB_APP_CLIENT_ID", "GITHUB_APP_CLIENT_SECRET"]
+
+[vars]
+ALLOWED_GITHUB_USER_IDS = ""
+ATTACH_PUBLIC_BASE = "https://attach.uinaf.dev"
 
 [observability]
 enabled = true

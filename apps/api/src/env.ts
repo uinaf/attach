@@ -1,7 +1,7 @@
 import { ATTACH_AUDIENCE, type AgentRegistryEntry } from "@uinaf/attach-shared";
 
-/** Binding Env comes from `wrangler types` (`worker-configuration.d.ts`). */
-export type Env = Cloudflare.Env;
+/** `AGENT_REGISTRY` is an optional dashboard secret, so Wrangler cannot generate it. */
+export type Env = Cloudflare.Env & { AGENT_REGISTRY?: string };
 
 export function allowedUserIds(env: Env): Set<string> {
   return new Set(

@@ -22,6 +22,7 @@ plain-text Worker vars.
 
 Runtime secrets stay on Cloudflare (set once, not on every CD run):
 `GITHUB_APP_CLIENT_ID`, `GITHUB_APP_CLIENT_SECRET`, optional `AGENT_REGISTRY`.
+Wrangler validates the two required GitHub App secrets before deployment.
 
 ## One-time bootstrap (self-host or new account)
 
@@ -44,6 +45,7 @@ Local secrets stay in gitignored `.dev.vars` (see `.dev.vars.example`).
 2. Create a **per-deploy** GitHub App (device flow, `read:user`, no
    Contents:write). `wrangler secret put` the App client id/secret.
 3. Bind the public hostname to the Worker after the first successful CD.
+   Production disables the public `workers.dev` route.
 4. Optionally set `AGENT_REGISTRY` (JSON App public keys) as a Worker secret.
 5. Configure **R2 object lifecycle** so physical storage matches the ADR
    two-year TTL (application soft-delete alone does not remove R2 bytes).
