@@ -134,32 +134,81 @@ export async function authenticate(
   };
 }
 
-export async function assertPutQuota(
+/** Hour bucket start (UTC ms). */
+export function putWindowStart(now: number): number {
+  return Math.floor(now / (60 * 60 * 1000)) * (60 * 60 * 1000);
+}
+
+/**
+ * Atomically reserve rate + storage quota before upload.
+ * Uses upsert counters so concurrent puts cannot both pass a read-then-write check.
+ */
+export async function claimPutQuota(
   db: D1Database,
   principalId: string,
   sizeBytes: number,
   now = Date.now(),
-): Promise<void> {
-  const hourStart = now - 60 * 60 * 1000;
-  const puts = await db
-    .prepare("SELECT COUNT(*) AS c FROM put_events WHERE principal_id = ? AND created_at >= ?")
-    .bind(principalId, hourStart)
-    .first<{ c: number }>();
-  if ((puts?.c ?? 0) >= PUTS_PER_HOUR) {
+): Promise<{ windowStart: number }> {
+  const windowStart = putWindowStart(now);
+
+  const rate = await db
+    .prepare(
+      `INSERT INTO quota_windows (principal_id, window_start, puts)
+       VALUES (?, ?, 1)
+       ON CONFLICT(principal_id, window_start) DO UPDATE
+       SET puts = puts + 1
+       WHERE puts < ?`,
+    )
+    .bind(principalId, windowStart, PUTS_PER_HOUR)
+    .run();
+  if ((rate.meta.changes ?? 0) === 0) {
     throw new ApiError(429, "rate_quota");
   }
 
-  const stored = await db
+  const storage = await db
     .prepare(
-      `SELECT COALESCE(SUM(size_bytes), 0) AS bytes
-       FROM objects
-       WHERE principal_id = ? AND deleted_at IS NULL AND expires_at > ?`,
+      `INSERT INTO principal_usage (principal_id, live_bytes)
+       VALUES (?, ?)
+       ON CONFLICT(principal_id) DO UPDATE
+       SET live_bytes = live_bytes + excluded.live_bytes
+       WHERE live_bytes + excluded.live_bytes <= ?`,
     )
-    .bind(principalId, now)
-    .first<{ bytes: number }>();
-  if ((stored?.bytes ?? 0) + sizeBytes > STORAGE_BYTES_LIMIT) {
+    .bind(principalId, sizeBytes, STORAGE_BYTES_LIMIT)
+    .run();
+  if ((storage.meta.changes ?? 0) === 0) {
+    await db
+      .prepare(
+        `UPDATE quota_windows SET puts = puts - 1
+         WHERE principal_id = ? AND window_start = ? AND puts > 0`,
+      )
+      .bind(principalId, windowStart)
+      .run();
     throw new ApiError(413, "storage_quota");
   }
+
+  return { windowStart };
+}
+
+export async function releasePutQuota(
+  db: D1Database,
+  principalId: string,
+  sizeBytes: number,
+  windowStart: number,
+): Promise<void> {
+  await db.batch([
+    db
+      .prepare(
+        `UPDATE quota_windows SET puts = puts - 1
+         WHERE principal_id = ? AND window_start = ? AND puts > 0`,
+      )
+      .bind(principalId, windowStart),
+    db
+      .prepare(
+        `UPDATE principal_usage SET live_bytes = MAX(0, live_bytes - ?)
+         WHERE principal_id = ?`,
+      )
+      .bind(sizeBytes, principalId),
+  ]);
 }
 
 export async function recordPut(
@@ -234,6 +283,15 @@ export async function softDeleteObject(
   principalId: string,
   now = Date.now(),
 ): Promise<boolean> {
+  const live = await db
+    .prepare(
+      `SELECT size_bytes FROM objects
+       WHERE object_key = ? AND principal_id = ? AND deleted_at IS NULL`,
+    )
+    .bind(objectKey, principalId)
+    .first<{ size_bytes: number }>();
+  if (!live) return false;
+
   const result = await db
     .prepare(
       `UPDATE objects SET deleted_at = ?
@@ -241,7 +299,16 @@ export async function softDeleteObject(
     )
     .bind(now, objectKey, principalId)
     .run();
-  return (result.meta.changes ?? 0) > 0;
+  if ((result.meta.changes ?? 0) === 0) return false;
+
+  await db
+    .prepare(
+      `UPDATE principal_usage SET live_bytes = MAX(0, live_bytes - ?)
+       WHERE principal_id = ?`,
+    )
+    .bind(live.size_bytes, principalId)
+    .run();
+  return true;
 }
 
 export async function bulkRevokePrincipalKeys(

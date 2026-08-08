@@ -8,7 +8,7 @@ import {
   validateContent,
   type PutResponse,
 } from "@uinaf/attach-shared";
-import { ApiError, assertPutQuota, recordPut, type AuthedKey } from "./db.ts";
+import { ApiError, claimPutQuota, recordPut, releasePutQuota, type AuthedKey } from "./db.ts";
 import type { Env } from "./env.ts";
 import { publicBase } from "./env.ts";
 
@@ -53,28 +53,33 @@ export async function handlePut(env: Env, request: Request, auth: AuthedKey): Pr
   const contentType = validateContent(contentTypeHeader, head);
   if (!contentType) throw new ApiError(415, "unsupported_media");
 
-  await assertPutQuota(env.DB, auth.principal.id, body.byteLength);
+  const now = Date.now();
+  const { windowStart } = await claimPutQuota(env.DB, auth.principal.id, body.byteLength, now);
 
   const objectKey = mintObjectKey();
   const digest = await digestBody(body);
-  const now = Date.now();
   const expiresAt = now + OBJECT_TTL_MS;
   const repo = request.headers.get("x-attach-repo");
   const prRaw = request.headers.get("x-attach-pr");
   const pr = prRaw && /^\d+$/.test(prRaw) ? Number(prRaw) : null;
 
-  await env.BUCKET.put(objectKey, body, {
-    httpMetadata: {
-      contentType,
-      contentDisposition: contentDisposition(contentType),
-    },
-    customMetadata: {
-      principal: auth.principal.id,
-      key_id: auth.keyId,
-      digest,
-      expires_at: String(expiresAt),
-    },
-  });
+  try {
+    await env.BUCKET.put(objectKey, body, {
+      httpMetadata: {
+        contentType,
+        contentDisposition: contentDisposition(contentType),
+      },
+      customMetadata: {
+        principal: auth.principal.id,
+        key_id: auth.keyId,
+        digest,
+        expires_at: String(expiresAt),
+      },
+    });
+  } catch (err) {
+    await releasePutQuota(env.DB, auth.principal.id, body.byteLength, windowStart);
+    throw err;
+  }
 
   try {
     await recordPut(env.DB, {
@@ -91,6 +96,7 @@ export async function handlePut(env: Env, request: Request, auth: AuthedKey): Pr
     });
   } catch (err) {
     await env.BUCKET.delete(objectKey);
+    await releasePutQuota(env.DB, auth.principal.id, body.byteLength, windowStart);
     throw err;
   }
 
