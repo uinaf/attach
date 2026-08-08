@@ -185,6 +185,7 @@ export async function claimPutQuota(
   const windowStart = putWindowStart(now);
 
   // Soft-delete TTL-expired rows (usage healed by reconcile below).
+  // Physical R2 removal is via bucket lifecycle — see docs/deploy.md.
   await db
     .prepare(
       `UPDATE objects SET deleted_at = ?

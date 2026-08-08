@@ -2,7 +2,7 @@ import { principalId, type EnrollResponse } from "@uinaf/attach-shared";
 import { verifyAgentJwt, AgentAuthError } from "./agent-jwt.ts";
 import { ApiError, EnrollError, authenticate, ensurePrincipal, mintKeyForPrincipal } from "./db.ts";
 import type { Env } from "./env.ts";
-import { allowedUserIds } from "./env.ts";
+import { agentAudience, allowedUserIds } from "./env.ts";
 import { checkAppUserToken, GitHubAuthError } from "./github.ts";
 import { handleGetPreview } from "./preview.ts";
 import { handleDeleteObject, handleGetObject } from "./serve.ts";
@@ -67,7 +67,7 @@ async function handleEnrollAgent(env: Env, request: Request): Promise<Response> 
   if (!jwt) return error(401, "missing_token");
 
   try {
-    const identity = await verifyAgentJwt(env, jwt);
+    const identity = await verifyAgentJwt(env, jwt, agentAudience(env, request));
     const principal = await ensurePrincipal(
       env.DB,
       principalId("app", identity.appId),

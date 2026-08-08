@@ -32,6 +32,23 @@ Binding names live in `apps/api/wrangler.toml`. Keep deploy ids out of git.
    Contents:write). `wrangler secret put` the App client id/secret.
 3. Bind the public hostname to the Worker after the first successful CD.
 4. Optionally set `AGENT_REGISTRY` (JSON App public keys) as a Worker secret.
+5. Configure **R2 object lifecycle** so physical storage matches the ADR
+   two-year TTL (application soft-delete alone does not remove R2 bytes).
+
+### R2 lifecycle (required for TTL)
+
+In the Cloudflare dashboard (or API) for the attach R2 bucket, add a lifecycle
+rule that **deletes objects 730 days after upload** (or AbortIncomplete / age
+equivalent). Verify before enabling on production:
+
+- Rule applies to the media bucket used by the Worker (`BUCKET` binding).
+- Age threshold ≥ application TTL (`OBJECT_TTL_MS` ≈ 2 years); tighter rules
+  can delete still-live objects.
+- After enablement, confirm a fresh put is not deleted early (spot-check
+  object age in the bucket UI).
+
+Document the rule name in your operator notes; keep account/bucket ids out of
+git.
 
 CLI against your host:
 

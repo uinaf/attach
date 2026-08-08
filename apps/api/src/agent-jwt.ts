@@ -1,6 +1,5 @@
 import {
   AGENT_JWT_MAX_TTL_SEC,
-  ATTACH_AUDIENCE,
   parseAgentIssuer,
   type AgentRegistryEntry,
 } from "@uinaf/attach-shared";
@@ -34,7 +33,11 @@ function findAgent(registry: AgentRegistryEntry[], appId: string): AgentRegistry
 }
 
 /** Verify agent JWT with pinned pubkey for app_id; claim jti atomically. */
-export async function verifyAgentJwt(env: Env, token: string): Promise<AgentIdentity> {
+export async function verifyAgentJwt(
+  env: Env,
+  token: string,
+  audience: string,
+): Promise<AgentIdentity> {
   const iss = decodeUnverifiedIss(token);
   if (!iss) throw new AgentAuthError(401, "jwt_malformed");
   const appId = parseAgentIssuer(iss);
@@ -53,7 +56,7 @@ export async function verifyAgentJwt(env: Env, token: string): Promise<AgentIden
     try {
       const cryptoKey = await importSPKI(key.pem, "RS256");
       const { payload, protectedHeader } = await jwtVerify(token, cryptoKey, {
-        audience: ATTACH_AUDIENCE,
+        audience,
         issuer: `attach:${appId}`,
         algorithms: ["RS256"],
         maxTokenAge: `${AGENT_JWT_MAX_TTL_SEC}s`,

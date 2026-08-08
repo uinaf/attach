@@ -95,7 +95,7 @@ export async function handleDeleteObject(
 
   // Delete R2 first so a crash never leaves a billed orphan after D1 soft-delete.
   await env.BUCKET.delete(objectKey);
-  const deleted = await softDeleteObject(env.DB, objectKey, auth.principal.id);
+  await softDeleteObject(env.DB, objectKey, auth.principal.id);
   // Object may already be gone from a prior partial delete; treat as success.
   return Response.json({
     deleted: true,

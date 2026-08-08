@@ -71,12 +71,18 @@ Accounting must be concurrency-safe (D1 transactions).
 
 ### Upload / serve
 
-- Worker-proxied PUT, 25 MiB streamed (abort oversize; do not trust Content-Length alone)
+- Worker-proxied PUT, 25 MiB **buffered** in the Worker (size enforced while
+  reading the body; do not trust Content-Length alone). Concurrent max-size
+  uploads multiply Worker memory; true end-to-end streaming to R2 is not required
+  by this ADR.
+- Object bytes remain in R2 until authenticated delete or **bucket lifecycle**
+  removes objects at/after the application TTL (see [Deploy](deploy.md)). D1
+  soft-delete on expiry heals quota; it is not by itself physical removal.
 - Opaque server-generated object keys (≥128-bit CSPRNG); no overwrite
 - SVG rejected; allowlisted MIME + magic where applicable
 - Routes under `/v1/...`; raw objects under `/o/<opaque>`; branded preview pages under `/p/<opaque>`
 - Put response: `url` is raw `/o/…` (embeds); `preview_url` is `/p/…` (humans + OG)
-- Object TTL: 2 years
+- Object TTL: 2 years (application `expires_at` + matching R2 lifecycle)
 - Serve raw with CSP sandbox, nosniff, inline for media / attachment for text; HTTP Range for video
 
 ### Takedown

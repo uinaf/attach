@@ -38,25 +38,21 @@ On allowlist rejection or login failure: report the blocker and stop.
 
 ## Agent workflow (GitHub App)
 
-JWT claims and secrets: [references/agent.md](references/agent.md). Requires
-App **public** key in Worker `AGENT_REGISTRY`; App PEM stays in the agent
-secret store (never chat).
-
-```bash
-base="${ATTACH_API_BASE:-https://attach.uinaf.dev}"
-curl -sS -X POST "$base/v1/enroll/agent" -H "Authorization: Bearer $JWT" -H "Accept: application/json"
-curl -sS -X PUT "$base/v1/objects" -H "Authorization: Bearer $ATT" -H "Content-Type: image/png" --data-binary @"$FILE"
-```
+JWT claims, header-file HTTP, and secret handling:
+[references/agent.md](references/agent.md). Requires App **public** key in Worker
+`AGENT_REGISTRY`; App PEM stays in the agent secret store (never chat).
 
 1. Sign JWT: `iss=attach:<app_id>`, `aud` = public host, `exp≤120s`, fresh `jti`
-2. Enroll → JSON `token` (`att_…`); disabled principal → hard-fail
-3. Put → require both `url` and `preview_url`
+2. `POST /v1/enroll/agent` with Authorization via a **header file** (never argv);
+   parse JSON in-process — keep `token` only in memory / secret store
+3. `PUT /v1/objects` the same way — success only when JSON includes both `url`
+   and `preview_url`
 4. On put **401**: re-enroll once (new `jti`) and put again; further failure → hard-fail
 
 ## Hard rules
 
 - Upload only with `att_` keys — never GitHub tokens / PATs / `ghs_` / install tokens
-- Never print App PEMs, device codes, or `att_` values
+- Never print App PEMs, device codes, or `att_` values (including enroll JSON)
 - Prefer preview URLs; `--markdown` / raw `url` only when the consumer needs embeds
 
 Stop when put returned URLs, delete verified gone, or blocked on install / client

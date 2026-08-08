@@ -22,26 +22,39 @@ Sign RS256 (optional `kid`) with claims:
 
 Reject any flow that uses bare GitHub API JWTs, `jku`, or remote JWKS.
 
-## Enroll
+## Enroll (credential-safe)
+
+Write the Authorization header to a temp file (mode `0600`) so the token is not
+visible in process argv. Parse the response in-process; **do not** print the
+JSON body to chat or logs.
 
 ```bash
 base="${ATTACH_API_BASE:-https://attach.uinaf.dev}"
-curl -sS -X POST "$base/v1/enroll/agent" \
-  -H "Authorization: Bearer $ATTACH_AGENT_JWT" \
-  -H "Accept: application/json"
+hdr="$(mktemp)"
+chmod 600 "$hdr"
+printf 'Authorization: Bearer %s\nAccept: application/json\n' "$ATTACH_AGENT_JWT" >"$hdr"
+# capture body to a variable or file your runtime owns — never `cat` att_ into chat
+curl -sS -X POST "$base/v1/enroll/agent" -H @"$hdr" -o enroll.json
+rm -f "$hdr"
+# then: read enroll.json → take .token into a secret var; delete enroll.json
 ```
 
 Expect JSON with `token` (`att_…`), `key_id`, `principal` (`app:<id>`). If the
 response indicates the principal is disabled, hard-fail.
 
+Prefer language-native HTTP (fetch, etc.) that sets headers from memory when
+available — same rule: no bearer in argv, no `att_` in transcripts.
+
 ## Upload
 
 ```bash
 base="${ATTACH_API_BASE:-https://attach.uinaf.dev}"
-curl -sS -X PUT "$base/v1/objects" \
-  -H "Authorization: Bearer $ATTACH_ATT_TOKEN" \
-  -H "Content-Type: image/png" \
-  --data-binary @"$FILE"
+hdr="$(mktemp)"
+chmod 600 "$hdr"
+printf 'Authorization: Bearer %s\nContent-Type: image/png\n' "$ATTACH_ATT_TOKEN" >"$hdr"
+curl -sS -X PUT "$base/v1/objects" -H @"$hdr" --data-binary @"$FILE" -o put.json
+rm -f "$hdr"
+# read put.json for url + preview_url only; never echo Authorization or att_
 ```
 
 Optional `repo` / `pr` metadata per Worker/CLI contract. Success only when the

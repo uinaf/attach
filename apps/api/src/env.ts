@@ -1,4 +1,4 @@
-import type { AgentRegistryEntry } from "@uinaf/attach-shared";
+import { ATTACH_AUDIENCE, type AgentRegistryEntry } from "@uinaf/attach-shared";
 
 export type Env = {
   BUCKET: R2Bucket;
@@ -31,4 +31,13 @@ export function publicBase(env: Env, request: Request): string {
   if (env.ATTACH_PUBLIC_BASE) return env.ATTACH_PUBLIC_BASE.replace(/\/$/, "");
   const url = new URL(request.url);
   return `${url.protocol}//${url.host}`;
+}
+
+/** JWT `aud` host for agent enroll — matches ADR (host of ATTACH_PUBLIC_BASE). */
+export function agentAudience(env: Env, request: Request): string {
+  try {
+    return new URL(publicBase(env, request)).host;
+  } catch {
+    return ATTACH_AUDIENCE;
+  }
 }
