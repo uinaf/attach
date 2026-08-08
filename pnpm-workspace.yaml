@@ -18,13 +18,10 @@ peerDependencyRules:
   allowedVersions:
     vite: "*"
 
-# design ships dist in git; skip its prepare (vp config). Allow worker toolchain builds.
-neverBuiltDependencies:
-  - "@uinaf/design"
-onlyBuiltDependencies:
-  - esbuild
-  - workerd
-  - sharp
+# Git-hosted packages need repository-form allowBuilds (name alone is registry-only).
+# design ships dist/; prepare is `vp config --no-agent` and is safe to run.
 allowBuilds:
   esbuild: true
   workerd: true
+  sharp: true
+  "@uinaf/design@git+https://github.com/uinaf/design.git": true
