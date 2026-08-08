@@ -22,7 +22,7 @@ jurisdiction = "eu"
 [[d1_databases]]
 binding = "DB"
 database_name = "attach"
-database_id = "local-attach-placeholder"
+database_id = "12791514-1a8e-4aa2-9e2a-25707ac93d8d"
 migrations_dir = "migrations"
 
 [[durable_objects.bindings]]
