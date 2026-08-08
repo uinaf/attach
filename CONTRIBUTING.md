@@ -17,17 +17,13 @@ Node (see `.node-version`) with Corepack enabled:
 # equivalent: pnpm run verify → pnpm exec vp run ready
 ```
 
-```sh
-./scripts/teardown.sh   # removes apps/api/wrangler.deploy.toml
-```
-
 ## Pull requests
 
 Use squash merge. Keep PRs focused; fill out the PR template.
 
 ## Deploy and release
 
-- Self-host and Worker CD env: [Deploy](docs/deploy.md)
+- Worker: push `main` → CD. [Deploy](docs/deploy.md)
 - npm `@uinaf/attach-cli`: [Releasing](docs/releasing.md)
 
 Do not commit deploy ids, allowlists, tokens, or PEMs.

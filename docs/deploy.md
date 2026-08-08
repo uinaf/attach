@@ -1,64 +1,47 @@
 # Deploy
 
-Run your own attach Worker (R2 + D1 + Durable Object). Binding names live in
-`apps/api/wrangler.toml`. Keep deploy-specific ids and allowlists out of git.
+Production Worker deploys from CI — not from a laptop.
 
-## GitHub App
+Push to `main` → `.github/workflows/main.yml` → GitHub Environment `production`
+→ `apps/api/scripts/deploy.ts` (build landing assets, D1 migrate, wrangler).
 
-Create a **per-deploy** GitHub App:
+## CD environment (`production`)
 
-1. GitHub → Settings → Developer settings → GitHub Apps → New GitHub App.
-2. Homepage = your public attach base URL. Enable **Device Flow**.
-3. OAuth scope from the CLI: `read:user`. No repository Contents:write.
-4. Install on accounts that will enroll (allowlist still gates by numeric user id).
-5. Copy **Client ID** and generate a **Client secret**.
+| Name                        | Kind   | Purpose                                 |
+| --------------------------- | ------ | --------------------------------------- |
+| `CLOUDFLARE_API_TOKEN`      | secret | Workers / R2 / D1                       |
+| `CLOUDFLARE_ACCOUNT_ID`     | var    | Cloudflare account                      |
+| `CLOUDFLARE_D1_DATABASE_ID` | var    | D1 database id                          |
+| `ALLOWED_GITHUB_USER_IDS`   | var    | Comma-separated numeric GitHub user ids |
+| `ATTACH_PUBLIC_BASE`        | var    | Public origin for returned object URLs  |
+
+`deploy.ts` fails closed if any are missing. It writes gitignored
+`wrangler.deploy.toml`, applies migrations, then `wrangler deploy --var` for
+plain-text Worker vars.
+
+Runtime secrets stay on Cloudflare (set once, not on every CD run):
+`GITHUB_APP_CLIENT_ID`, `GITHUB_APP_CLIENT_SECRET`, optional `AGENT_REGISTRY`.
+
+## One-time bootstrap (self-host or new account)
+
+Binding names live in `apps/api/wrangler.toml`. Keep deploy ids out of git.
+
+1. Create R2 + D1 matching `wrangler.toml`; put the D1 id in
+   `CLOUDFLARE_D1_DATABASE_ID` (GH env var for CD).
+2. Create a **per-deploy** GitHub App (device flow, `read:user`, no
+   Contents:write). `wrangler secret put` the App client id/secret.
+3. Bind the public hostname to the Worker after the first successful CD.
+4. Optionally set `AGENT_REGISTRY` (JSON App public keys) as a Worker secret.
+
+CLI against your host:
 
 ```bash
-cd apps/api
-wrangler secret put GITHUB_APP_CLIENT_ID
-wrangler secret put GITHUB_APP_CLIENT_SECRET
-```
-
-```bash
-export ATTACH_GITHUB_CLIENT_ID=...   # same client id
+export ATTACH_GITHUB_CLIENT_ID=...
 # optional: export ATTACH_API_BASE=https://your.attach.host
 attach login
 ```
 
-## Cloudflare
-
-Create resources that match `wrangler.toml`, then deploy with env set:
-
-```bash
-wrangler r2 bucket create <bucket_name>
-wrangler d1 create <database_name>   # export id as CLOUDFLARE_D1_DATABASE_ID
-pnpm --filter @uinaf/attach-web build
-pnpm --filter @uinaf/attach-api deploy
-```
-
-`apps/api/scripts/deploy.ts` requires:
-
-| Name                        | Purpose                                 |
-| --------------------------- | --------------------------------------- |
-| `CLOUDFLARE_API_TOKEN`      | Workers / R2 / D1                       |
-| `CLOUDFLARE_ACCOUNT_ID`     | Cloudflare account                      |
-| `CLOUDFLARE_D1_DATABASE_ID` | D1 database id                          |
-| `ALLOWED_GITHUB_USER_IDS`   | Comma-separated numeric GitHub user ids |
-| `ATTACH_PUBLIC_BASE`        | Public origin for returned object URLs  |
-
-It writes gitignored `wrangler.deploy.toml`, applies D1 migrations, then
-`wrangler deploy --var` for the plain-text Worker vars. Missing env fails closed.
-
-Also set Worker secrets: `GITHUB_APP_CLIENT_ID`, `GITHUB_APP_CLIENT_SECRET`, and
-optionally `AGENT_REGISTRY` (below). Bind your custom hostname after the script
-exists.
-
-This repo’s CD (`main.yml`) reads the same names from GitHub Environment
-`production` (`CLOUDFLARE_API_TOKEN` as a secret; the rest as vars).
-
 ## Agent registry
-
-JSON Worker secret `AGENT_REGISTRY` (cannot also be a var):
 
 ```json
 [

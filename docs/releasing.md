@@ -32,9 +32,5 @@ npm i -g @uinaf/attach-cli
 
 ## Worker
 
-Push to `main` → GitHub Environment `production` → wrangler. Env names and
-Cloudflare runtime secrets: [Deploy](deploy.md).
-
-```bash
-pnpm run deploy
-```
+Push to `main` → GitHub Environment `production` → wrangler (see [Deploy](deploy.md)).
+Do not deploy the production Worker from a laptop.

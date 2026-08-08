@@ -32,6 +32,6 @@ is `att_` keys only — never GitHub tokens.
 ## Docs
 
 - [Auth contract](docs/adr-001-auth-and-principals.md)
-- [Self-host / deploy](docs/deploy.md)
+- [Deploy (CD + bootstrap)](docs/deploy.md)
 - [Releasing](docs/releasing.md)
 - [Contributing](CONTRIBUTING.md)

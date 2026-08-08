@@ -23,9 +23,9 @@ Keep tracker links out of package-facing docs (`README.md`).
 | `apps/cli` | `@uinaf/attach-cli` / `uinaf/gh-attach` |
 | `apps/web` | landing                                 |
 
-Local uinaf deploy inject lives in `uinaf/vault` (`shared/uinaf-attach-deploy`,
-`shared/uinaf-cloudflare-workers-deploy`, `shared/uinaf-attach-github-app`).
-Do not put vault paths or payloads in README / CONTRIBUTING / `docs/`.
+Production Worker CD is GitHub Environment `production` only. Vault
+(`shared/uinaf-attach-deploy`, workers-deploy, attach-github-app) is for local
+bootstrap/break-glass inject — never document vault paths in package docs.
 
 ## Rules
 
