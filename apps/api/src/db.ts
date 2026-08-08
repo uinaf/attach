@@ -155,26 +155,15 @@ export async function claimPutQuota(
 
   const windowStart = putWindowStart(now);
 
-  // Soft-delete TTL-expired rows; decrement only bytes this claim actually
-  // marked (RETURNING), so concurrent claims cannot double-subtract.
-  const marked = await db
+  // Soft-delete TTL-expired rows; trg_objects_soft_delete_usage decrements
+  // live_bytes once per row in the same statement (crash-safe, claim-owned).
+  await db
     .prepare(
       `UPDATE objects SET deleted_at = ?
-       WHERE principal_id = ? AND deleted_at IS NULL AND expires_at <= ?
-       RETURNING size_bytes`,
+       WHERE principal_id = ? AND deleted_at IS NULL AND expires_at <= ?`,
     )
     .bind(now, principalId, now)
-    .all<{ size_bytes: number }>();
-  const expiredBytes = (marked.results ?? []).reduce((sum, row) => sum + row.size_bytes, 0);
-  if (expiredBytes > 0) {
-    await db
-      .prepare(
-        `UPDATE principal_usage SET live_bytes = MAX(0, live_bytes - ?)
-         WHERE principal_id = ?`,
-      )
-      .bind(expiredBytes, principalId)
-      .run();
-  }
+    .run();
 
   const rate = await db
     .prepare(
@@ -310,15 +299,7 @@ export async function softDeleteObject(
   principalId: string,
   now = Date.now(),
 ): Promise<boolean> {
-  const live = await db
-    .prepare(
-      `SELECT size_bytes FROM objects
-       WHERE object_key = ? AND principal_id = ? AND deleted_at IS NULL`,
-    )
-    .bind(objectKey, principalId)
-    .first<{ size_bytes: number }>();
-  if (!live) return false;
-
+  // Trigger trg_objects_soft_delete_usage decrements live_bytes atomically.
   const result = await db
     .prepare(
       `UPDATE objects SET deleted_at = ?
@@ -326,16 +307,7 @@ export async function softDeleteObject(
     )
     .bind(now, objectKey, principalId)
     .run();
-  if ((result.meta.changes ?? 0) === 0) return false;
-
-  await db
-    .prepare(
-      `UPDATE principal_usage SET live_bytes = MAX(0, live_bytes - ?)
-       WHERE principal_id = ?`,
-    )
-    .bind(live.size_bytes, principalId)
-    .run();
-  return true;
+  return (result.meta.changes ?? 0) > 0;
 }
 
 export async function bulkRevokePrincipalKeys(

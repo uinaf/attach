@@ -25,12 +25,15 @@ describe("principals", () => {
 
 describe("api keys", () => {
   it("mints and verifies att_ keys", async () => {
-    const minted = mintApiKey();
-    expect(minted.token.startsWith("att_")).toBe(true);
-    const parsed = parseApiKey(minted.token);
-    expect(parsed?.keyId).toBe(minted.keyId);
-    const hash = await hashApiKeySecret(minted.secret);
-    expect(await verifyApiKeySecret(parsed!.secret, hash)).toBe(true);
+    // base64url keyIds often contain '_'; separator must still round-trip.
+    for (let i = 0; i < 50; i++) {
+      const minted = mintApiKey();
+      expect(minted.token.startsWith("att_")).toBe(true);
+      const parsed = parseApiKey(minted.token);
+      expect(parsed?.keyId).toBe(minted.keyId);
+      const hash = await hashApiKeySecret(minted.secret);
+      expect(await verifyApiKeySecret(parsed!.secret, hash)).toBe(true);
+    }
   });
 });
 

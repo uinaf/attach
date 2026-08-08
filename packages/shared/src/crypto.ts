@@ -54,18 +54,19 @@ export type ApiKeyMaterial = {
 export function mintApiKey(): ApiKeyMaterial {
   const keyId = bytesToBase64Url(randomBytes(8));
   const secret = randomBytes(KEY_SECRET_BYTES);
-  const token = `${KEY_PREFIX}${keyId}_${bytesToBase64Url(secret)}`;
+  // '.' cannot appear in base64url; '_' can, so never use '_' as the separator.
+  const token = `${KEY_PREFIX}${keyId}.${bytesToBase64Url(secret)}`;
   return { token, keyId, secret };
 }
 
 export function parseApiKey(token: string): { keyId: string; secret: Uint8Array } | null {
   if (!token.startsWith(KEY_PREFIX)) return null;
   const rest = token.slice(KEY_PREFIX.length);
-  const idx = rest.indexOf("_");
+  const idx = rest.indexOf(".");
   if (idx <= 0) return null;
   const keyId = rest.slice(0, idx);
   const secretPart = rest.slice(idx + 1);
-  if (!keyId || !secretPart) return null;
+  if (!keyId || !secretPart || secretPart.includes(".")) return null;
   try {
     const secret = base64UrlToBytes(secretPart);
     if (secret.length !== KEY_SECRET_BYTES) return null;
