@@ -143,9 +143,24 @@ export function putWindowStart(now: number): number {
 export const PUT_RESERVATION_TTL_MS = 15 * 60 * 1000;
 
 async function reclaimExpiredReservations(db: D1Database, now: number): Promise<void> {
-  // Drop expired storage holds only. Rate slots stay until releasePutQuota or
-  // the hour rolls — avoids double-decrement if an in-flight put outlives TTL.
-  await db.prepare("DELETE FROM put_reservations WHERE expires_at <= ?").bind(now).run();
+  // Drop expired storage holds and release the rate slots they charged on claim.
+  const expired = await db
+    .prepare(
+      `DELETE FROM put_reservations WHERE expires_at <= ?
+       RETURNING principal_id, window_start`,
+    )
+    .bind(now)
+    .all<{ principal_id: string; window_start: number }>();
+
+  for (const row of expired.results ?? []) {
+    await db
+      .prepare(
+        `UPDATE quota_windows SET puts = puts - 1
+         WHERE principal_id = ? AND window_start = ? AND puts > 0`,
+      )
+      .bind(row.principal_id, row.window_start)
+      .run();
+  }
 }
 
 /** Recompute committed live_bytes from live objects (reservations stay separate). */
@@ -259,15 +274,21 @@ export async function releasePutQuota(
   windowStart: number,
   reservationId: string,
 ): Promise<void> {
-  await db.batch([
-    db.prepare("DELETE FROM put_reservations WHERE id = ?").bind(reservationId),
-    db
-      .prepare(
-        `UPDATE quota_windows SET puts = puts - 1
-         WHERE principal_id = ? AND window_start = ? AND puts > 0`,
-      )
-      .bind(principalId, windowStart),
-  ]);
+  // Only release the rate slot if this claim still owns the reservation
+  // (TTL reclaim may already have dropped it and decremented puts).
+  const deleted = await db
+    .prepare("DELETE FROM put_reservations WHERE id = ?")
+    .bind(reservationId)
+    .run();
+  if ((deleted.meta.changes ?? 0) === 0) return;
+
+  await db
+    .prepare(
+      `UPDATE quota_windows SET puts = puts - 1
+       WHERE principal_id = ? AND window_start = ? AND puts > 0`,
+    )
+    .bind(principalId, windowStart)
+    .run();
 }
 
 export async function recordPut(
@@ -287,6 +308,11 @@ export async function recordPut(
   },
 ): Promise<void> {
   const putId = crypto.randomUUID();
+  const cleared = await db
+    .prepare("DELETE FROM put_reservations WHERE id = ?")
+    .bind(args.reservationId)
+    .run();
+
   await db.batch([
     db
       .prepare(
@@ -310,7 +336,6 @@ export async function recordPut(
     db
       .prepare("INSERT INTO put_events (id, principal_id, created_at) VALUES (?, ?, ?)")
       .bind(putId, args.principalId, args.now),
-    db.prepare("DELETE FROM put_reservations WHERE id = ?").bind(args.reservationId),
     // Refresh committed usage from objects (includes the row just inserted).
     db
       .prepare(
@@ -323,6 +348,20 @@ export async function recordPut(
       )
       .bind(args.principalId, args.principalId, args.now),
   ]);
+
+  // TTL reclaim may have already released the claim's rate slot — restore it.
+  if ((cleared.meta.changes ?? 0) === 0) {
+    const windowStart = putWindowStart(args.now);
+    await db
+      .prepare(
+        `INSERT INTO quota_windows (principal_id, window_start, puts)
+         VALUES (?, ?, 1)
+         ON CONFLICT(principal_id, window_start) DO UPDATE
+         SET puts = puts + 1`,
+      )
+      .bind(args.principalId, windowStart)
+      .run();
+  }
 }
 
 export async function getLiveObject(db: D1Database, objectKey: string, now = Date.now()) {
