@@ -290,7 +290,12 @@ export async function recordPut(
   },
 ): Promise<void> {
   const putId = crypto.randomUUID();
-  const windowStart = putWindowStart(args.now);
+  // Bill the hour bucket the reservation was claimed against (not wall-clock now).
+  const reserved = await db
+    .prepare("SELECT window_start FROM put_reservations WHERE id = ?")
+    .bind(args.reservationId)
+    .first<{ window_start: number }>();
+  const windowStart = reserved?.window_start ?? putWindowStart(args.now);
 
   await db.batch([
     db
@@ -316,7 +321,7 @@ export async function recordPut(
       .prepare("INSERT INTO put_events (id, principal_id, created_at) VALUES (?, ?, ?)")
       .bind(putId, args.principalId, args.now),
     db.prepare("DELETE FROM put_reservations WHERE id = ?").bind(args.reservationId),
-    // Charge the hour bucket only after the object is committed.
+    // Charge the claim window only after the object is committed.
     db
       .prepare(
         `INSERT INTO quota_windows (principal_id, window_start, puts)

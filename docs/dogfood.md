@@ -35,6 +35,11 @@ wrangler secret put GITHUB_APP_CLIENT_SECRET
 GitHub Environment `production` should hold the same for Actions deploy, plus
 `CLOUDFLARE_API_TOKEN`. Set variable `CLOUDFLARE_ACCOUNT_ID=b7ef10ce7bc4d0568bf3920b52402642`.
 
+The deploy token must allow **Workers Scripts Edit** and **D1 Edit** on this
+account (`wrangler d1 migrations apply … --remote` runs before every deploy).
+The shared `uinaf-cloudflare-workers-deploy` vault token is Workers-only today;
+until it gains D1 Edit, attach production may use a broader account token.
+
 ## 2. Pin Glitch agent public key
 
 Export Glitch's App **public** key (from the PEM already used by Glitch):
