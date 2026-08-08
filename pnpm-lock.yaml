@@ -258,14 +258,13 @@ importers:
         version: 4.120.0(@cloudflare/workers-types@4.20260702.1)
 
   apps/cli:
-    dependencies:
-      '@uinaf/attach-shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
         version: 24.13.3
+      '@uinaf/attach-shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       typescript:
         specifier: 'catalog:'
         version: 7.0.2

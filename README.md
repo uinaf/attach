@@ -28,16 +28,22 @@ pnpm exec vp run ready
 ## CLI
 
 ```bash
-export ATTACH_GITHUB_CLIENT_ID=...   # Attach App client id
-export ATTACH_API_BASE=https://attach.uinaf.dev
+# recommended
+gh extension install uinaf/gh-attach
+# or: npm i -g @uinaf/attach-cli
 
-pnpm --filter @uinaf/attach-cli build
-node apps/cli/dist/attach.mjs login
-node apps/cli/dist/attach.mjs put ./shot.png --repo uinaf/foo --pr 12
-node apps/cli/dist/attach.mjs delete <url>
+export ATTACH_GITHUB_CLIENT_ID=...   # Attach App client id
+export ATTACH_API_BASE=https://attach.uinaf.dev   # optional; production default
+
+gh attach login
+gh attach put ./shot.png --repo uinaf/foo --pr 12
+# prints /p/… preview URL; --markdown embeds raw /o/…
+gh attach delete <url-or-key>
 ```
 
 `put` accepts GitHub tokens **never** — only `att_` keys minted at enroll.
+
+From this repo (dev): `pnpm --filter @uinaf/attach-cli build && node apps/cli/dist/attach.mjs …`
 
 ## Auth summary
 

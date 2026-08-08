@@ -27,5 +27,5 @@ Tracker: https://github.com/orgs/uinaf/projects/1
 Worker deploys from `main` via the `production` GitHub Environment
 (`attach.uinaf.dev`). See [docs/dogfood.md](docs/dogfood.md).
 
-CLI npm publish is not wired yet — no `release` Environment until a package
-publish path exists.
+CLI publishes from `main` via the `release` Environment (npm OIDC +
+`uinaf-releaser`). See [docs/releasing.md](docs/releasing.md).

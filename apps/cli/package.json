@@ -1,25 +1,44 @@
 {
   "name": "@uinaf/attach-cli",
   "version": "0.1.0",
-  "private": true,
+  "description": "CLI for attach — upload PR/validation media to a self-hosted Cloudflare kit",
+  "homepage": "https://attach.uinaf.dev",
+  "bugs": {
+    "url": "https://github.com/uinaf/attach/issues"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/uinaf/attach.git",
+    "directory": "apps/cli"
+  },
   "bin": {
     "attach": "./dist/attach.mjs",
     "gh-attach": "./dist/attach.mjs"
   },
+  "files": [
+    "dist"
+  ],
   "type": "module",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "scripts": {
     "dev": "vp pack --watch",
     "check": "vp check",
     "test": "vp test run",
-    "build": "vp pack"
-  },
-  "dependencies": {
-    "@uinaf/attach-shared": "workspace:*"
+    "build": "vp pack",
+    "prepublishOnly": "vp pack"
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "@uinaf/attach-shared": "workspace:*",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:"
+  },
+  "engines": {
+    "node": ">=22.18.0"
   }
 }

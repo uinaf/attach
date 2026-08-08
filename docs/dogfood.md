@@ -106,12 +106,13 @@ same pattern as `design.uinaf.dev`.
 ```bash
 export ATTACH_GITHUB_CLIENT_ID=Iv1...   # from Attach App
 export ATTACH_API_BASE=https://attach.uinaf.dev
-pnpm --filter @uinaf/attach-cli build
-node apps/cli/dist/attach.js login
-node apps/cli/dist/attach.js put ./shot.png --repo uinaf/attach --pr 1
+gh extension install uinaf/gh-attach
+# or: npm i -g @uinaf/attach-cli
+gh attach login
+gh attach put ./shot.png --repo uinaf/attach --pr 1
 ```
 
-Or as a gh extension (after packaging): `gh attach login`.
+Dev from this repo: `pnpm --filter @uinaf/attach-cli build && node apps/cli/dist/attach.mjs …`.
 
 ## 5. Agent dogfood (Glitch)
 
