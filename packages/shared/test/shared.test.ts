@@ -29,11 +29,22 @@ describe("api keys", () => {
     for (let i = 0; i < 50; i++) {
       const minted = mintApiKey();
       expect(minted.token.startsWith("att_")).toBe(true);
+      expect(minted.token.includes(".")).toBe(true);
       const parsed = parseApiKey(minted.token);
       expect(parsed?.keyId).toBe(minted.keyId);
       const hash = await hashApiKeySecret(minted.secret);
       expect(await verifyApiKeySecret(parsed!.secret, hash)).toBe(true);
     }
+  });
+
+  it("still parses legacy underscore-separated tokens", async () => {
+    const minted = mintApiKey();
+    const secretB64 = minted.token.slice(minted.token.indexOf(".") + 1);
+    const legacy = `att_${minted.keyId}_${secretB64}`;
+    const parsed = parseApiKey(legacy);
+    expect(parsed?.keyId).toBe(minted.keyId);
+    const hash = await hashApiKeySecret(minted.secret);
+    expect(await verifyApiKeySecret(parsed!.secret, hash)).toBe(true);
   });
 });
 
