@@ -42,4 +42,40 @@ describe("R2 lifecycle deploy gate", () => {
       }),
     ).toBe(false);
   });
+
+  it("rejects an overlapping early or date-based deletion rule", () => {
+    const safe = lifecycleRule();
+    const earlyPrefix = lifecycleRule({
+      id: "early-prefix",
+      conditions: { prefix: "a" },
+      deleteObjectsTransition: {
+        condition: { type: "Age", maxAge: 30 * 24 * 60 * 60 },
+      },
+    });
+    const dated = lifecycleRule({
+      id: "dated",
+      deleteObjectsTransition: {
+        condition: { type: "Date", date: "2030-01-01T00:00:00Z" },
+      },
+    });
+
+    expect(hasRequiredObjectLifecycle({ result: { rules: [safe, earlyPrefix] } })).toBe(false);
+    expect(hasRequiredObjectLifecycle({ result: { rules: [safe, dated] } })).toBe(false);
+  });
+
+  it("allows unrelated transitions and safe prefix deletion rules", () => {
+    const safePrefix = lifecycleRule({ id: "safe-prefix", conditions: { prefix: "a" } });
+    const abortOnly = {
+      id: "abort-multipart",
+      enabled: true,
+      conditions: { prefix: "" },
+      abortMultipartUploadsTransition: {
+        condition: { type: "Age", maxAge: 7 * 24 * 60 * 60 },
+      },
+    };
+
+    expect(
+      hasRequiredObjectLifecycle({ result: { rules: [lifecycleRule(), safePrefix, abortOnly] } }),
+    ).toBe(true);
+  });
 });

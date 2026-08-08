@@ -8,17 +8,23 @@ export function hasRequiredObjectLifecycle(payload: unknown): boolean {
   const result = isRecord(payload) && isRecord(payload.result) ? payload.result : payload;
   if (!isRecord(result) || !Array.isArray(result.rules)) return false;
 
-  return result.rules.some((rule) => {
-    if (!isRecord(rule) || rule.enabled !== true || !isRecord(rule.conditions)) return false;
-    if (rule.conditions.prefix !== "" || !isRecord(rule.deleteObjectsTransition)) return false;
+  let coversAllObjects = false;
+  for (const rule of result.rules) {
+    if (!isRecord(rule)) return false;
+    if (rule.enabled !== true || rule.deleteObjectsTransition === undefined) continue;
+    if (!isRecord(rule.conditions) || !isRecord(rule.deleteObjectsTransition)) return false;
     const condition = rule.deleteObjectsTransition.condition;
-    return (
-      isRecord(condition) &&
-      condition.type === "Age" &&
-      typeof condition.maxAge === "number" &&
-      condition.maxAge >= MIN_OBJECT_AGE_SECONDS
-    );
-  });
+    if (
+      !isRecord(condition) ||
+      condition.type !== "Age" ||
+      typeof condition.maxAge !== "number" ||
+      condition.maxAge < MIN_OBJECT_AGE_SECONDS
+    ) {
+      return false;
+    }
+    if (rule.conditions.prefix === "") coversAllObjects = true;
+  }
+  return coversAllObjects;
 }
 
 export async function requireObjectLifecycle(args: {

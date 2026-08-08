@@ -67,9 +67,9 @@ Verify before enabling on production:
 - After enablement, confirm a fresh put is not deleted early (spot-check
   object age in the bucket UI).
 
-CD validates an enabled all-prefix age rule of at least 760 days and fails
-before D1 migration if it is absent, disabled, narrower, or earlier. Keep
-account/bucket ids out of git.
+CD requires an enabled all-prefix age rule of at least 760 days and rejects any
+other enabled delete transition that is earlier or date-based. The check fails
+before D1 migration. Keep account/bucket ids out of git.
 
 CLI against your host:
 
