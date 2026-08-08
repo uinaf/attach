@@ -1,0 +1,55 @@
+name: Publish skill
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "skills/attach-cli/**"
+      - "scripts/verify-published-skill.sh"
+      - ".github/workflows/publish-skill.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: publish skill
+    if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: skill-release
+      deployment: false
+    concurrency:
+      group: publish-skill-${{ github.repository }}-main
+      cancel-in-progress: false
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Tessl
+        uses: tesslio/setup-tessl@33e1c9253e3673f28e1b8949475b250dbd57918e # v2
+        with:
+          version: "0.94.0"
+          token: ${{ secrets.TESSL_TOKEN }}
+
+      - name: Publish manifest version
+        id: publish
+        uses: uinaf/tessl-publish-action@20580b9b8ecdb6d958ba583e37078541128aeb76 # v2.3.0
+        with:
+          review-threshold: "100"
+          publish-all: "true"
+          version-strategy: manifest
+          commit-version-bumps: "false"
+
+      - name: Smoke published skill
+        env:
+          PUBLISHED_VERSIONS: ${{ steps.publish.outputs.versions }}
+        run: |
+          version=$(jq -er '."skills/attach-cli"' <<< "$PUBLISHED_VERSIONS")
+          ./scripts/verify-published-skill.sh "$version"

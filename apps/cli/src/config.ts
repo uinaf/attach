@@ -19,7 +19,7 @@ export function clientId(): string {
   const id = process.env.ATTACH_GITHUB_CLIENT_ID;
   if (!id) {
     throw new Error(
-      "ATTACH_GITHUB_CLIENT_ID is required (Attach GitHub App client id). See docs/dogfood.md",
+      "ATTACH_GITHUB_CLIENT_ID is required (Attach GitHub App client id). See docs/deploy.md",
     );
   }
   return id;

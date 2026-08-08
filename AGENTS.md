@@ -10,12 +10,13 @@ Keep tracker links out of package-facing docs (`README.md`).
 
 ## Orientation
 
-| Doc                                                  | When                       |
-| ---------------------------------------------------- | -------------------------- |
-| [Contributing](CONTRIBUTING.md)                      | setup, verify, PRs         |
-| [Auth contract](docs/adr-001-auth-and-principals.md) | principals, enroll, quotas |
-| [Deploy](docs/deploy.md)                             | self-host                  |
-| [Releasing](docs/releasing.md)                       | Worker CD + npm CLI        |
+| Doc                                                  | When                          |
+| ---------------------------------------------------- | ----------------------------- |
+| [Contributing](CONTRIBUTING.md)                      | setup, verify, PRs            |
+| [Auth contract](docs/adr-001-auth-and-principals.md) | principals, enroll, quotas    |
+| [Deploy](docs/deploy.md)                             | Worker CD + bootstrap         |
+| [Releasing](docs/releasing.md)                       | npm CLI + Tessl skill publish |
+| [attach-cli skill](skills/attach-cli/SKILL.md)       | consumer agent skill (Tessl)  |
 
 | Path       | Role                                    |
 | ---------- | --------------------------------------- |

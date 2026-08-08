@@ -34,3 +34,14 @@ npm i -g @uinaf/attach-cli
 
 Push to `main` → GitHub Environment `production` → wrangler (see [Deploy](deploy.md)).
 Do not deploy the production Worker from a laptop.
+
+## Tessl skill (`uinaf/attach-cli`)
+
+Agent skill package under `skills/attach-cli/`. Skill SemVer lives in
+`skills/attach-cli/.tessl-plugin/plugin.json` and is independent of the npm CLI
+version.
+
+Push to `main` touching `skills/attach-cli/**` → `.github/workflows/publish-skill.yml`
+→ GitHub Environment `skill-release` (`TESSL_TOKEN`) →
+`uinaf/tessl-publish-action` with `review-threshold: 100` →
+`scripts/verify-published-skill.sh` (strict Tessl install + Codex discovery).

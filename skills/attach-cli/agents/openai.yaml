@@ -1,0 +1,16 @@
+interface:
+  display_name: "attach-cli"
+  short_description: "Upload PR/validation media via attach, gh attach, or App JWT enroll"
+  default_prompt: |
+    Use $attach-cli.
+
+    Goal: upload PR or validation media to the attach Worker and return a
+    public preview URL (or raw/markdown when asked).
+
+    Require the installed `attach` CLI or `gh attach` extension. For humans:
+    ATTACH_GITHUB_CLIENT_ID → attach login → attach put. For GitHub App
+    agents: JWT enroll then att_ upload (see skill references). Never send
+    GitHub tokens to put; never invent a second upload client.
+
+    Output: the resulting URL or a precise blocker (install, client id,
+    allowlist, registry, auth).
