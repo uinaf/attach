@@ -20,12 +20,7 @@ pnpm run verify
 Use squash merge. Keep PRs focused; fill out the PR template (summary, changed,
 risks, verification, complexity).
 
-Tracker: https://github.com/orgs/uinaf/projects/1
+## Deploy and release
 
-## Deploy
-
-Worker deploys from `main` via the `production` GitHub Environment
-(`attach.uinaf.dev`). See [docs/dogfood.md](docs/dogfood.md).
-
-CLI publishes from `main` via the `release` Environment (npm OIDC +
-`uinaf-releaser`). See [docs/releasing.md](docs/releasing.md).
+- Worker: `main` → `production` Environment → `attach.uinaf.dev`. See [Dogfood setup](docs/dogfood.md).
+- CLI npm: `main` → `release` Environment. See [Releasing](docs/releasing.md).
