@@ -2,11 +2,11 @@
 
 # attach
 
-Self-hosted Cloudflare kit so humans and GitHub App agents can upload PR /
-validation media to R2 and get public URLs — without cookie hacks or
-Contents:write tokens on the Worker.
+Upload PR and validation media to your own Cloudflare Worker + R2. Humans and
+GitHub App agents get public URLs — no cookie hacks, no Contents:write on the
+Worker.
 
-Host: [attach.uinaf.dev](https://attach.uinaf.dev)
+Hosted demo: [attach.uinaf.dev](https://attach.uinaf.dev)
 
 ## Install
 
@@ -18,25 +18,20 @@ npm i -g @uinaf/attach-cli
 ## Usage
 
 ```bash
-export ATTACH_GITHUB_CLIENT_ID=...   # Attach GitHub App client id
-# optional: export ATTACH_API_BASE=https://attach.uinaf.dev
+export ATTACH_GITHUB_CLIENT_ID=...   # your Attach GitHub App client id
+# optional: export ATTACH_API_BASE=https://your.attach.host
 
 attach login
-attach put ./shot.png --repo uinaf/foo --pr 12
-# prints /p/… preview URL; --markdown embeds raw /o/…
+attach put ./shot.png --repo owner/repo --pr 12
 attach delete <url-or-key>
 ```
 
-`put` accepts GitHub tokens **never** — only `att_` keys minted at enroll.
-
-| Who   | Enroll                                                        | Upload         |
-| ----- | ------------------------------------------------------------- | -------------- |
-| Human | Attach App device flow → `POST /v1/enroll/human`              | `Bearer att_…` |
-| Agent | JWT (`iss=attach:<app_id>`, DO jti) → `POST /v1/enroll/agent` | `Bearer att_…` |
+`put` prints a `/p/…` preview URL (`--markdown` embeds raw `/o/…`). Upload auth
+is `att_` keys only — never GitHub tokens.
 
 ## Docs
 
-- [Auth contract](docs/adr-001-auth-and-principals.md) — principals, enroll, quotas, serve/takedown
-- [Deploy](docs/deploy.md) — self-host, credentials, agent registry
-- [Releasing](docs/releasing.md) — Worker CD + npm `@uinaf/attach-cli`
-- [Contributing](CONTRIBUTING.md) — setup, verify, PRs
+- [Auth contract](docs/adr-001-auth-and-principals.md)
+- [Self-host / deploy](docs/deploy.md)
+- [Releasing](docs/releasing.md)
+- [Contributing](CONTRIBUTING.md)

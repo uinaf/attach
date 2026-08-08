@@ -1,29 +1,17 @@
 # Deploy
 
-Self-host an attach Worker (R2 + D1 + Durable Object) and wire a GitHub App for
-human enroll. Binding names live in `apps/api/wrangler.toml`. Deploy-specific
-ids and allowlists stay in your environment — not in git.
-
-## Credential surfaces
-
-| Surface                | Source                                                          |
-| ---------------------- | --------------------------------------------------------------- |
-| Production CD          | GitHub Environment `production` → `main.yml` → wrangler         |
-| Production runtime     | Cloudflare Worker secrets + plain-text vars set at deploy       |
-| Local operator (uinaf) | `uinaf/vault` via `sops exec-env` only — never CI or the Worker |
+Run your own attach Worker (R2 + D1 + Durable Object). Binding names live in
+`apps/api/wrangler.toml`. Keep deploy-specific ids and allowlists out of git.
 
 ## GitHub App
 
-Create a **per-deploy** GitHub App (not a shared multi-tenant app):
+Create a **per-deploy** GitHub App:
 
 1. GitHub → Settings → Developer settings → GitHub Apps → New GitHub App.
-2. Set the homepage to your public attach base URL. Enable **Device Flow**.
-3. Minimal OAuth scope from the CLI (`read:user`). No repository Contents:write.
+2. Homepage = your public attach base URL. Enable **Device Flow**.
+3. OAuth scope from the CLI: `read:user`. No repository Contents:write.
 4. Install on accounts that will enroll (allowlist still gates by numeric user id).
 5. Copy **Client ID** and generate a **Client secret**.
-
-Put App credentials on the Worker (GitHub Environment `production` cannot use
-`GITHUB_*` secret names):
 
 ```bash
 cd apps/api
@@ -31,72 +19,46 @@ wrangler secret put GITHUB_APP_CLIENT_ID
 wrangler secret put GITHUB_APP_CLIENT_SECRET
 ```
 
-CLI login needs the same client id:
-
 ```bash
-export ATTACH_GITHUB_CLIENT_ID=...   # Attach App client id
+export ATTACH_GITHUB_CLIENT_ID=...   # same client id
 # optional: export ATTACH_API_BASE=https://your.attach.host
 attach login
 ```
 
-## Production CD (GitHub Environment `production`)
+## Cloudflare
 
-| Name                        | Kind   | Purpose                                     |
-| --------------------------- | ------ | ------------------------------------------- |
-| `CLOUDFLARE_API_TOKEN`      | secret | Workers / R2 / D1 token                     |
-| `CLOUDFLARE_ACCOUNT_ID`     | var    | Cloudflare account                          |
-| `CLOUDFLARE_D1_DATABASE_ID` | var    | D1 database id (patched into wrangler.toml) |
-| `ALLOWED_GITHUB_USER_IDS`   | var    | Comma-separated numeric GitHub user ids     |
-| `ATTACH_PUBLIC_BASE`        | var    | Public origin used in returned object URLs  |
-
-`apps/api/scripts/deploy.mjs` writes gitignored `wrangler.deploy.toml` with the
-D1 id, applies migrations, then `wrangler deploy --var` for the plain-text
-Worker vars. Missing env fails closed.
-
-## Production runtime (Cloudflare)
-
-Worker secrets: `GITHUB_APP_CLIENT_ID`, `GITHUB_APP_CLIENT_SECRET`,
-`AGENT_REGISTRY`.
-
-Plain-text vars from the last deploy: `ALLOWED_GITHUB_USER_IDS`,
-`ATTACH_PUBLIC_BASE`.
-
-## Local deploy (uinaf operators)
-
-Optional inject from vault — local machines only:
-
-| Payload                                  | Keys                                                                          |
-| ---------------------------------------- | ----------------------------------------------------------------------------- |
-| `shared/uinaf-cloudflare-workers-deploy` | `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_API_TOKEN_ID`    |
-| `shared/uinaf-attach-deploy`             | `CLOUDFLARE_D1_DATABASE_ID`, `ALLOWED_GITHUB_USER_IDS`, `ATTACH_PUBLIC_BASE`  |
-| `shared/uinaf-attach-github-app`         | `ATTACH_GITHUB_CLIENT_ID`, `GITHUB_APP_CLIENT_ID`, `GITHUB_APP_CLIENT_SECRET` |
+Create resources that match `wrangler.toml`, then deploy with env set:
 
 ```bash
-# from uinaf/vault — command is one argument to sops exec-env
-sops exec-env secrets/shared/uinaf-cloudflare-workers-deploy.sops.json \
-  "sops exec-env secrets/shared/uinaf-attach-deploy.sops.json \"bash -lc 'cd ../attach && pnpm run deploy'\""
-```
-
-Self-hosters without vault: export the same names from your own secret store,
-then `pnpm run deploy`.
-
-## Cloudflare bindings
-
-From `apps/api`, create resources that match `wrangler.toml`:
-
-```bash
-wrangler r2 bucket create <bucket_name>   # match [[r2_buckets]]
-wrangler d1 create <database_name>        # note the database id for CLOUDFLARE_D1_DATABASE_ID
+wrangler r2 bucket create <bucket_name>
+wrangler d1 create <database_name>   # export id as CLOUDFLARE_D1_DATABASE_ID
 pnpm --filter @uinaf/attach-web build
 pnpm --filter @uinaf/attach-api deploy
 ```
 
-Bind your custom hostname to the Worker after the script exists.
+`apps/api/scripts/deploy.mjs` requires:
+
+| Name                        | Purpose                                 |
+| --------------------------- | --------------------------------------- |
+| `CLOUDFLARE_API_TOKEN`      | Workers / R2 / D1                       |
+| `CLOUDFLARE_ACCOUNT_ID`     | Cloudflare account                      |
+| `CLOUDFLARE_D1_DATABASE_ID` | D1 database id                          |
+| `ALLOWED_GITHUB_USER_IDS`   | Comma-separated numeric GitHub user ids |
+| `ATTACH_PUBLIC_BASE`        | Public origin for returned object URLs  |
+
+It writes gitignored `wrangler.deploy.toml`, applies D1 migrations, then
+`wrangler deploy --var` for the plain-text Worker vars. Missing env fails closed.
+
+Also set Worker secrets: `GITHUB_APP_CLIENT_ID`, `GITHUB_APP_CLIENT_SECRET`, and
+optionally `AGENT_REGISTRY` (below). Bind your custom hostname after the script
+exists.
+
+This repo’s CD (`main.yml`) reads the same names from GitHub Environment
+`production` (`CLOUDFLARE_API_TOKEN` as a secret; the rest as vars).
 
 ## Agent registry
 
-Export each agent's App **public** key and set Worker secret `AGENT_REGISTRY`
-(Cloudflare forbids the same name as a var + secret):
+JSON Worker secret `AGENT_REGISTRY` (cannot also be a var):
 
 ```json
 [
@@ -112,9 +74,8 @@ Export each agent's App **public** key and set Worker secret `AGENT_REGISTRY`
 wrangler secret put AGENT_REGISTRY
 ```
 
-To disable an agent: remove or disable the registry entry and update the secret;
-also revoke keys for that `app:<id>` principal in D1 (or mark the principal
-disabled).
+Disable an agent by updating the secret and revoking or disabling that
+`app:<id>` principal in D1.
 
 ## Smoke
 
@@ -123,22 +84,8 @@ export ATTACH_GITHUB_CLIENT_ID=...
 export ATTACH_API_BASE=https://your.attach.host
 attach login
 attach put ./shot.png --repo owner/repo --pr 1
-# preview: /p/<key> · raw: /o/<key>
 ```
 
-Agent JWT enroll:
-
-| Claim | Value                              |
-| ----- | ---------------------------------- |
-| `iss` | `attach:<github-app-id>`           |
-| `aud` | host matching `ATTACH_PUBLIC_BASE` |
-| `exp` | ≤ `iat + 120`                      |
-| `jti` | UUID (one-time)                    |
-
-```http
-POST /v1/enroll/agent
-Authorization: Bearer <jwt>
-```
-
-Use the returned `att_` key for `PUT /v1/objects`. On 401, re-enroll at most
-once; if the principal is disabled, hard-fail.
+Agent JWT enroll: `iss=attach:<app_id>`, `aud` = host of `ATTACH_PUBLIC_BASE`,
+`exp` ≤ `iat + 120`, one-time `jti` → `POST /v1/enroll/agent` → use returned
+`att_` key for `PUT /v1/objects`.

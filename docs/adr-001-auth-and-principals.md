@@ -37,7 +37,7 @@ must not reset principal quotas.
 
 1. Agent signs a short-lived JWT with its existing App PEM:
    - `iss` = `attach:<app_id>` (blocks bare GitHub API JWT replay)
-   - `aud` = `attach.uinaf.dev`
+   - `aud` = public attach host (same origin as `ATTACH_PUBLIC_BASE`)
    - `exp` ≤ 120s from `iat`
    - `jti` = UUID
 2. Worker verifies with the **pinned** App public key for that `app_id` only
