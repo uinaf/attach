@@ -31,33 +31,21 @@ export async function ensurePrincipal(
   kind: "user" | "app",
   display: string,
 ): Promise<PrincipalRow> {
-  const existing = await db
-    .prepare("SELECT id, kind, display, enabled FROM principals WHERE id = ?")
-    .bind(id)
-    .first<PrincipalRow>();
-  if (existing) return existing;
-
   const now = Date.now();
   await db
     .prepare(
-      "INSERT INTO principals (id, kind, display, enabled, created_at) VALUES (?, ?, ?, 1, ?)",
+      `INSERT INTO principals (id, kind, display, enabled, created_at)
+       VALUES (?, ?, ?, 1, ?)
+       ON CONFLICT(id) DO NOTHING`,
     )
     .bind(id, kind, display, now)
     .run();
-  return { id, kind, display, enabled: 1 };
-}
-
-export async function countEnrollmentsToday(
-  db: D1Database,
-  principalId: string,
-  now = Date.now(),
-): Promise<number> {
-  const dayStart = now - 24 * 60 * 60 * 1000;
-  const row = await db
-    .prepare("SELECT COUNT(*) AS c FROM enroll_events WHERE principal_id = ? AND created_at >= ?")
-    .bind(principalId, dayStart)
-    .first<{ c: number }>();
-  return row?.c ?? 0;
+  const principal = await db
+    .prepare("SELECT id, kind, display, enabled FROM principals WHERE id = ?")
+    .bind(id)
+    .first<PrincipalRow>();
+  if (!principal) throw new Error("principal_create_failed");
+  return principal;
 }
 
 export async function mintKeyForPrincipal(
@@ -67,26 +55,35 @@ export async function mintKeyForPrincipal(
   if (!principal.enabled) {
     throw new EnrollError(403, "principal_disabled");
   }
-  const enrollments = await countEnrollmentsToday(db, principal.id);
-  if (enrollments >= ENROLLMENTS_PER_DAY) {
-    throw new EnrollError(429, "enrollment_quota");
-  }
-
   const minted = mintApiKey();
   const hash = await hashApiKeySecret(minted.secret);
   const now = Date.now();
   const enrollId = crypto.randomUUID();
+  const dayStart = now - 24 * 60 * 60 * 1000;
 
-  await db.batch([
+  const results = await db.batch([
     db
       .prepare(
-        "INSERT INTO api_keys (key_id, principal_id, key_hash, created_at) VALUES (?, ?, ?, ?)",
+        `INSERT INTO enroll_events (id, principal_id, created_at)
+         SELECT ?, ?, ?
+         WHERE (
+           SELECT COUNT(*) FROM enroll_events
+           WHERE principal_id = ? AND created_at >= ?
+         ) < ?`,
       )
-      .bind(minted.keyId, principal.id, bytesToBuffer(hash), now),
+      .bind(enrollId, principal.id, now, principal.id, dayStart, ENROLLMENTS_PER_DAY),
     db
-      .prepare("INSERT INTO enroll_events (id, principal_id, created_at) VALUES (?, ?, ?)")
-      .bind(enrollId, principal.id, now),
+      .prepare(
+        `INSERT INTO api_keys (key_id, principal_id, key_hash, created_at)
+         SELECT ?, ?, ?, ?
+         WHERE EXISTS (SELECT 1 FROM enroll_events WHERE id = ?)`,
+      )
+      .bind(minted.keyId, principal.id, bytesToBuffer(hash), now, enrollId),
   ]);
+  if ((results[0]?.meta.changes ?? 0) === 0) {
+    throw new EnrollError(429, "enrollment_quota");
+  }
+  if ((results[1]?.meta.changes ?? 0) !== 1) throw new Error("enrollment_commit_failed");
 
   return { token: minted.token, keyId: minted.keyId };
 }
