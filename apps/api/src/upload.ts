@@ -114,7 +114,11 @@ export async function handlePut(env: Env, request: Request, auth: AuthedKey): Pr
         // still release quota below
       }
     }
-    await releasePutQuota(env.DB, auth.principal.id, body.byteLength, windowStart, reservationId);
+    try {
+      await releasePutQuota(env.DB, auth.principal.id, body.byteLength, windowStart, reservationId);
+    } catch {
+      // cleanup must not mask the original put/commit failure
+    }
     throw err;
   }
 }
