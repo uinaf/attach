@@ -90,6 +90,7 @@ export async function handlePut(env: Env, request: Request, auth: AuthedKey): Pr
       },
     });
 
+    const committedAt = Date.now();
     await recordPut(env.DB, {
       objectKey,
       principalId: auth.principal.id,
@@ -100,6 +101,7 @@ export async function handlePut(env: Env, request: Request, auth: AuthedKey): Pr
       repo,
       pr,
       now,
+      committedAt,
       expiresAt,
       reservationId,
     });

@@ -1,6 +1,11 @@
 import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
-import { claimPutQuota, recordPut, softDeleteObject } from "../../src/db.ts";
+import {
+  claimPutQuota,
+  PUT_RESERVATION_TTL_MS,
+  recordPut,
+  softDeleteObject,
+} from "../../src/db.ts";
 import { PUTS_PER_HOUR, STORAGE_BYTES_LIMIT } from "@uinaf/attach-shared";
 
 const now = Date.parse("2026-08-08T15:30:00.000Z");
@@ -26,6 +31,7 @@ describe("D1 quota (workers pool)", () => {
       repo: null,
       pr: null,
       now,
+      committedAt: now,
       expiresAt: now + 86_400_000,
       reservationId: claim.reservationId,
     });
@@ -43,6 +49,47 @@ describe("D1 quota (workers pool)", () => {
       status: 413,
       code: "storage_quota",
     });
+  });
+
+  it("atomically rejects an expired upload reservation", async () => {
+    const principal = `user:workers-expired-${crypto.randomUUID()}`;
+    const objectKey = `obj_${crypto.randomUUID()}`;
+    await env.DB.prepare(
+      "INSERT INTO principals (id, kind, display, enabled, created_at) VALUES (?, 'user', 't', 1, ?)",
+    )
+      .bind(principal, now)
+      .run();
+    const claim = await claimPutQuota(env.DB, principal, 100, now);
+
+    await expect(
+      recordPut(env.DB, {
+        objectKey,
+        principalId: principal,
+        keyId: "kid",
+        sizeBytes: 100,
+        contentType: "image/png",
+        digest: "d",
+        repo: null,
+        pr: null,
+        now,
+        committedAt: now + PUT_RESERVATION_TTL_MS,
+        expiresAt: now + 86_400_000,
+        reservationId: claim.reservationId,
+      }),
+    ).rejects.toMatchObject({ status: 409, code: "put_reservation_expired" });
+
+    const [object, usage, events] = await Promise.all([
+      env.DB.prepare("SELECT object_key FROM objects WHERE object_key = ?").bind(objectKey).first(),
+      env.DB.prepare("SELECT live_bytes FROM principal_usage WHERE principal_id = ?")
+        .bind(principal)
+        .first(),
+      env.DB.prepare("SELECT COUNT(*) AS count FROM put_events WHERE principal_id = ?")
+        .bind(principal)
+        .first<{ count: number }>(),
+    ]);
+    expect(object).toBeNull();
+    expect(usage).toBeNull();
+    expect(events?.count).toBe(0);
   });
 
   it("decrements storage once under concurrent deletes", async () => {

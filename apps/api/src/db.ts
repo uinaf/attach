@@ -258,18 +258,28 @@ export async function recordPut(
     repo: string | null;
     pr: number | null;
     now: number;
+    committedAt: number;
     expiresAt: number;
     reservationId: string;
   },
 ): Promise<void> {
   const putId = crypto.randomUUID();
-  await db.batch([
+  const reservationArgs = [
+    args.reservationId,
+    args.principalId,
+    args.sizeBytes,
+    args.committedAt,
+  ] as const;
+  const results = await db.batch([
     db
       .prepare(
         `INSERT INTO objects (
           object_key, principal_id, key_id, size_bytes, content_type, digest,
           repo, pr, created_at, expires_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        )
+        SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+        FROM put_reservations
+        WHERE id = ? AND principal_id = ? AND size_bytes = ? AND expires_at > ?`,
       )
       .bind(
         args.objectKey,
@@ -282,19 +292,35 @@ export async function recordPut(
         args.pr,
         args.now,
         args.expiresAt,
+        ...reservationArgs,
       ),
     db
-      .prepare("INSERT INTO put_events (id, principal_id, created_at) VALUES (?, ?, ?)")
-      .bind(putId, args.principalId, args.now),
-    db.prepare("DELETE FROM put_reservations WHERE id = ?").bind(args.reservationId),
+      .prepare(
+        `INSERT INTO put_events (id, principal_id, created_at)
+         SELECT ?, ?, ?
+         WHERE EXISTS (
+           SELECT 1 FROM put_reservations
+           WHERE id = ? AND principal_id = ? AND size_bytes = ? AND expires_at > ?
+         )`,
+      )
+      .bind(putId, args.principalId, args.committedAt, ...reservationArgs),
     db
       .prepare(
-        `INSERT INTO principal_usage (principal_id, live_bytes) VALUES (?, ?)
+        `INSERT INTO principal_usage (principal_id, live_bytes)
+         SELECT ?, ?
+         WHERE EXISTS (
+           SELECT 1 FROM put_reservations
+           WHERE id = ? AND principal_id = ? AND size_bytes = ? AND expires_at > ?
+         )
          ON CONFLICT(principal_id) DO UPDATE
          SET live_bytes = principal_usage.live_bytes + excluded.live_bytes`,
       )
-      .bind(args.principalId, args.sizeBytes),
+      .bind(args.principalId, args.sizeBytes, ...reservationArgs),
+    db.prepare("DELETE FROM put_reservations WHERE id = ?").bind(args.reservationId),
   ]);
+  if ((results[0]?.meta.changes ?? 0) !== 1) {
+    throw new ApiError(409, "put_reservation_expired");
+  }
 }
 
 export async function getLiveObject(db: D1Database, objectKey: string, now = Date.now()) {
