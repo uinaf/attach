@@ -5,11 +5,11 @@
   "description": "Self-hosted Cloudflare kit for PR/validation media uploads",
   "type": "module",
   "scripts": {
-    "ready": "vp check && pnpm --filter @uinaf/attach-api types:check && vp run -r test && vp run -t @uinaf/attach-web#build && vp run -t @uinaf/attach-cli#build",
+    "ready": "vp check && pnpm --filter @uinaf/attach-api types:check && vp run -r test && vp run -t @uinaf/attach-web#build && vp run -t @uinaf/attach-api#build && vp run -t @uinaf/attach-cli#build",
     "verify": "vp run ready",
     "check": "vp check",
     "test": "vp run -r test",
-    "build": "vp run -t @uinaf/attach-web#build && vp run -t @uinaf/attach-cli#build",
+    "build": "vp run -t @uinaf/attach-web#build && vp run -t @uinaf/attach-api#build && vp run -t @uinaf/attach-cli#build",
     "dev": "vp run @uinaf/attach-web#dev",
     "deploy": "pnpm exec vp run -t @uinaf/attach-web#build && node apps/api/scripts/deploy.ts",
     "prepare": "vp config --no-agent"

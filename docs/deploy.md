@@ -3,7 +3,8 @@
 Production Worker deploys from CI — not from a laptop.
 
 Push to `main` → `.github/workflows/main.yml` → GitHub Environment `production`
-→ `apps/api/scripts/deploy.ts` (build landing assets, D1 migrate, wrangler).
+→ `apps/api/scripts/deploy.ts` (build landing assets, dry-run the Worker, D1
+migrate, deploy). The dry run must pass before production D1 is mutated.
 
 ## CD environment (`production`)
 

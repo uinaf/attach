@@ -39,6 +39,7 @@ function run(args: string[]): void {
 }
 
 const config = ["--config", "wrangler.deploy.toml"];
+run(["deploy", "--dry-run", "--outdir", "dist", ...config]);
 run(["d1", "migrations", "apply", "attach", "--remote", ...config]);
 run([
   "deploy",
