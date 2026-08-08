@@ -7,16 +7,20 @@ import { ATTACH_AUDIENCE, JTI_RETENTION_MS } from "@uinaf/attach-shared";
 
 function jtiNamespace(store: Map<string, number>): DurableObjectNamespace {
   return {
-    idFromName() {
-      return { toString: () => "global" } as DurableObjectId;
+    idFromName(name: string) {
+      return { toString: () => name } as DurableObjectId;
     },
-    get() {
+    get(id: DurableObjectId) {
+      const name = id.toString();
       return {
         async fetch(_input: RequestInfo | URL, init?: RequestInit) {
           const raw = typeof init?.body === "string" ? init.body : "{}";
           const body = JSON.parse(raw) as { jti?: string; now?: number };
           const jti = body.jti?.trim();
           if (!jti) return Response.json({ ok: false, error: "missing_jti" }, { status: 400 });
+          if (jti !== name) {
+            return Response.json({ ok: false, error: "jti_mismatch" }, { status: 400 });
+          }
           const now = body.now ?? Date.now();
           for (const [k, exp] of store) {
             if (exp <= now) store.delete(k);
@@ -132,5 +136,27 @@ describe("verifyAgentJwt", () => {
     } as Env;
     const longTtl = await mint(privateKey, { aud: "h", appId: "1", jti: "y", ttlSec: 121 });
     await expect(verifyAgentJwt(envOk, longTtl, "h")).rejects.toMatchObject({ code: "jwt_ttl" });
+  });
+
+  it("rejects whitespace-only jti and treats padded jti as the trimmed key", async () => {
+    const { privateKey, publicKey } = await generateKeyPair("RS256");
+    const pem = await exportSPKI(publicKey);
+    const claimed = new Map<string, number>();
+    const env = {
+      AGENT_REGISTRY: JSON.stringify([{ app_id: "1", slug: "a", public_keys: [{ pem }] }]),
+      JTI: jtiNamespace(claimed),
+    } as Env;
+
+    const blank = await mint(privateKey, { aud: "h", appId: "1", jti: "   " });
+    await expect(verifyAgentJwt(env, blank, "h")).rejects.toMatchObject({
+      code: "jwt_jti_missing",
+    });
+
+    const padded = await mint(privateKey, { aud: "h", appId: "1", jti: "  pad  " });
+    await verifyAgentJwt(env, padded, "h");
+    expect(claimed.has("pad")).toBe(true);
+
+    const plain = await mint(privateKey, { aud: "h", appId: "1", jti: "pad" });
+    await expect(verifyAgentJwt(env, plain, "h")).rejects.toMatchObject({ code: "jwt_replay" });
   });
 });

@@ -1,16 +1,7 @@
 import { ATTACH_AUDIENCE, type AgentRegistryEntry } from "@uinaf/attach-shared";
 
-export type Env = {
-  BUCKET: R2Bucket;
-  DB: D1Database;
-  JTI: DurableObjectNamespace;
-  GITHUB_APP_CLIENT_ID: string;
-  GITHUB_APP_CLIENT_SECRET: string;
-  ALLOWED_GITHUB_USER_IDS: string;
-  /** JSON array of AgentRegistryEntry */
-  AGENT_REGISTRY: string;
-  ATTACH_PUBLIC_BASE?: string;
-};
+/** Binding Env comes from `wrangler types` (`worker-configuration.d.ts`). */
+export type Env = Cloudflare.Env;
 
 export function allowedUserIds(env: Env): Set<string> {
   return new Set(
@@ -35,7 +26,7 @@ export function publicBase(env: Env, request: Request): string {
 
 /**
  * JWT `aud` host for agent enroll — host of ATTACH_PUBLIC_BASE when set.
- * Never use the request Host. Unset → published default host. Set-but-invalid → throw.
+ * Never use the request Host. Unset/empty → published default host. Invalid → throw.
  */
 export function agentAudience(env: Env): string {
   const raw = env.ATTACH_PUBLIC_BASE?.trim();

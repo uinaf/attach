@@ -26,6 +26,18 @@ Runtime secrets stay on Cloudflare (set once, not on every CD run):
 
 Binding names live in `apps/api/wrangler.toml`. Keep deploy ids out of git.
 
+After changing bindings or vars in `wrangler.toml`, regenerate and commit Env types:
+
+```bash
+cd apps/api && pnpm run types
+# wrangler types --env-file .dev.vars.example --include-runtime=false
+# → small worker-configuration.d.ts (bindings only; not the workerd runtime dump)
+```
+
+Commit that file (do not gitignore it). `ready` / CI run `pnpm --filter @uinaf/attach-api types:check`
+(`wrangler types --check`) so drift fails the build — types are not regenerated in CI.
+Local secrets stay in gitignored `.dev.vars` (see `.dev.vars.example`).
+
 1. Create R2 + D1 matching `wrangler.toml`; put the D1 id in
    `CLOUDFLARE_D1_DATABASE_ID` (GH env var for CD).
 2. Create a **per-deploy** GitHub App (device flow, `read:user`, no
@@ -97,3 +109,7 @@ If `ATTACH_PUBLIC_BASE` is unset, agent enroll falls back to the published
 default host (`attach.uinaf.dev`) for `aud` only — set the var for any
 self-hosted hostname. Invalid values fail enroll with
 `attach_public_base_invalid`.
+
+Agent JWT `jti` claims are per-token Durable Objects (`idFromName(jti)`). A
+deploy that changes that keying can reopen a short replay window for JTIs still
+within `JTI_RETENTION_MS` (~180s) under the previous keying.

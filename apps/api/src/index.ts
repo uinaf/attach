@@ -6,7 +6,7 @@ import { agentAudience, allowedUserIds } from "./env.ts";
 import { checkAppUserToken, GitHubAuthError } from "./github.ts";
 import { handleGetPreview } from "./preview.ts";
 import { handleDeleteObject, handleGetObject } from "./serve.ts";
-export { JtiStore } from "./jti.ts";
+export { JtiStore } from "./jti-store.ts";
 import { handlePut } from "./upload.ts";
 
 function json(data: unknown, status = 200): Response {

@@ -2,8 +2,17 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "lib": ["ES2022"],
-    "types": ["@cloudflare/workers-types", "node"],
+    "moduleResolution": "bundler",
+    "module": "ESNext",
+    "types": [
+      "@cloudflare/workers-types",
+      "@cloudflare/vitest-pool-workers",
+      "./worker-configuration.d.ts",
+      "node"
+    ],
+    // Env-only wrangler types + @cloudflare/workers-types overlap until full runtime typegen.
+    "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["src", "test", "scripts"]
+  "include": ["src", "test", "scripts", "vitest.workers.config.ts", "worker-configuration.d.ts"]
 }

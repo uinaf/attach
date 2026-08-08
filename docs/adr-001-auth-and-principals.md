@@ -71,10 +71,10 @@ Accounting must be concurrency-safe (D1 transactions).
 
 ### Upload / serve
 
-- Worker-proxied PUT, 25 MiB **buffered** in the Worker (size enforced while
-  reading the body; do not trust Content-Length alone). Concurrent max-size
-  uploads multiply Worker memory; true end-to-end streaming to R2 is not required
-  by this ADR.
+- Worker-proxied PUT, 25 MiB **buffered** in the Worker via a growable single
+  buffer (size enforced while reading; do not trust Content-Length alone).
+  Concurrent max-size uploads multiply Worker memory; true end-to-end streaming
+  to R2 is not required by this ADR.
 - Object bytes remain in R2 until authenticated delete or **bucket lifecycle**
   removes objects at/after the application TTL (see [Deploy](deploy.md)). D1
   soft-delete on expiry heals quota; it is not by itself physical removal.

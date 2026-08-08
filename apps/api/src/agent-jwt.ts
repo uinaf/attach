@@ -72,7 +72,7 @@ export async function verifyAgentJwt(
         continue;
       }
 
-      const jti = typeof payload.jti === "string" ? payload.jti : null;
+      const jti = typeof payload.jti === "string" ? payload.jti.trim() : null;
       if (!jti) throw new AgentAuthError(401, "jwt_jti_missing");
 
       const iat = payload.iat;

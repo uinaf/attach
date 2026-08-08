@@ -13,44 +13,54 @@ import { ApiError, claimPutQuota, recordPut, releasePutQuota, type AuthedKey } f
 import type { Env } from "./env.ts";
 import { publicBase } from "./env.ts";
 
+/**
+ * Read at most MAX_UPLOAD_BYTES into one growable buffer (no chunk[] + second copy).
+ * Does not trust Content-Length alone.
+ */
 async function readLimitedBody(request: Request): Promise<Uint8Array> {
   if (!request.body) throw new ApiError(400, "empty_body");
 
   const reader = request.body.getReader();
-  const chunks: Uint8Array[] = [];
+  let buf = new Uint8Array(Math.min(64 * 1024, MAX_UPLOAD_BYTES));
   let total = 0;
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    if (!value) continue;
-    total += value.byteLength;
-    if (total > MAX_UPLOAD_BYTES) {
-      try {
-        await reader.cancel();
-      } catch {
-        // ignore
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value?.byteLength) continue;
+      if (total + value.byteLength > MAX_UPLOAD_BYTES) {
+        throw new ApiError(413, "too_large");
       }
-      throw new ApiError(413, "too_large");
+      if (total + value.byteLength > buf.byteLength) {
+        const nextLen = Math.min(
+          Math.max(buf.byteLength * 2, total + value.byteLength),
+          MAX_UPLOAD_BYTES,
+        );
+        const next = new Uint8Array(nextLen);
+        next.set(buf.subarray(0, total));
+        buf = next;
+      }
+      buf.set(value, total);
+      total += value.byteLength;
     }
-    chunks.push(value);
+  } catch (err) {
+    try {
+      await reader.cancel();
+    } catch {
+      // ignore
+    }
+    throw err;
   }
 
   if (total === 0) throw new ApiError(400, "empty_body");
-
-  const out = new Uint8Array(total);
-  let offset = 0;
-  for (const chunk of chunks) {
-    out.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  return out;
+  return buf.subarray(0, total);
 }
 
 export async function handlePut(env: Env, request: Request, auth: AuthedKey): Promise<PutResponse> {
   const contentTypeHeader = request.headers.get("content-type")?.split(";")[0]?.trim() ?? "";
   const body = await readLimitedBody(request);
-  const head = body.slice(0, 512);
+  const head = body.subarray(0, 512);
   const contentType = validateContent(contentTypeHeader, head);
   if (!contentType) throw new ApiError(415, "unsupported_media");
 

@@ -1,0 +1,30 @@
+# Minimal Worker config for @cloudflare/vitest-pool-workers (no assets).
+name = "attach-test"
+main = "src/index.ts"
+compatibility_date = "2026-08-07"
+compatibility_flags = ["nodejs_compat"]
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "attach-test"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "attach-test"
+database_id = "00000000-0000-0000-0000-000000000001"
+migrations_dir = "migrations"
+
+[[durable_objects.bindings]]
+name = "JTI"
+class_name = "JtiStore"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["JtiStore"]
+
+[vars]
+ALLOWED_GITHUB_USER_IDS = "1"
+ATTACH_PUBLIC_BASE = "https://attach.uinaf.dev"
+GITHUB_APP_CLIENT_ID = "local"
+GITHUB_APP_CLIENT_SECRET = "local"
+AGENT_REGISTRY = "[]"

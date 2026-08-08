@@ -1,0 +1,6 @@
+# Copy to .dev.vars for local wrangler / type generation. Never commit .dev.vars.
+GITHUB_APP_CLIENT_ID=local
+GITHUB_APP_CLIENT_SECRET=local
+AGENT_REGISTRY=[]
+ALLOWED_GITHUB_USER_IDS=1
+ATTACH_PUBLIC_BASE=https://attach.uinaf.dev
