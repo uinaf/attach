@@ -10,7 +10,7 @@
     "preview": "vp preview"
   },
   "dependencies": {
-    "@uinaf/design": "github:uinaf/design#main"
+    "@uinaf/design": "^0.1.0"
   },
   "devDependencies": {
     "@types/node": "catalog:",

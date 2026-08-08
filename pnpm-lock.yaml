@@ -279,8 +279,8 @@ importers:
   apps/web:
     dependencies:
       '@uinaf/design':
-        specifier: github:uinaf/design#main
-        version: https://codeload.github.com/uinaf/design/tar.gz/3d53e4c1b61ba3524f1f988429df787b451a9d10
+        specifier: ^0.1.0
+        version: 0.1.0
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
@@ -1163,9 +1163,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@uinaf/design@https://codeload.github.com/uinaf/design/tar.gz/3d53e4c1b61ba3524f1f988429df787b451a9d10':
-    resolution: {gitHosted: true, tarball: https://codeload.github.com/uinaf/design/tar.gz/3d53e4c1b61ba3524f1f988429df787b451a9d10}
-    version: 0.1.0
+  '@uinaf/design@0.1.0':
+    resolution: {integrity: sha512-6mmHKM8s5VST6VpwSWCZhi/xZ15esacHZZexOLour1nLgs5NZEnS7bOcWkzvK0sVMTI3RSf4cRm52mhbSVxfRw==}
     engines: {node: '>=24.18.0'}
 
   '@vitest/browser-preview@4.1.10':
@@ -2366,7 +2365,7 @@ snapshots:
   '@typescript/typescript-win32-x64@7.0.2':
     optional: true
 
-  '@uinaf/design@https://codeload.github.com/uinaf/design/tar.gz/3d53e4c1b61ba3524f1f988429df787b451a9d10': {}
+  '@uinaf/design@0.1.0': {}
 
   '@vitest/browser-preview@4.1.10(@voidzero-dev/vite-plus-core@0.2.8(@types/node@24.13.3)(esbuild@0.28.1)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.0))(vitest@4.1.10(@types/node@26.1.2)(@vitest/browser-preview@4.1.10)(@voidzero-dev/vite-plus-core@0.2.8(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.0)))':
     dependencies:

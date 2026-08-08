@@ -25,3 +25,6 @@ allowBuilds:
   workerd: true
   sharp: true
   "@uinaf/design@git+https://github.com/uinaf/design.git": true
+
+minimumReleaseAgeExclude:
+  - "@uinaf/design@0.1.0"
