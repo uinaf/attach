@@ -5,6 +5,7 @@ import {
   digestBody,
   mintObjectKey,
   objectUrl,
+  previewUrl,
   validateContent,
   type PutResponse,
 } from "@uinaf/attach-shared";
@@ -98,8 +99,10 @@ export async function handlePut(env: Env, request: Request, auth: AuthedKey): Pr
       reservationId,
     });
 
+    const base = publicBase(env, request);
     return {
-      url: objectUrl(publicBase(env, request), objectKey),
+      url: objectUrl(base, objectKey),
+      preview_url: previewUrl(base, objectKey),
       key: objectKey,
       content_type: contentType,
       size: body.byteLength,

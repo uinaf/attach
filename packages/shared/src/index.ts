@@ -63,11 +63,21 @@ export function opaqueObjectPath(objectKey: string): string {
   return `/o/${objectKey}`;
 }
 
+export function opaquePreviewPath(objectKey: string): string {
+  return `/p/${objectKey}`;
+}
+
 export function objectUrl(base: string, objectKey: string): string {
   return `${base.replace(/\/$/, "")}${opaqueObjectPath(objectKey)}`;
 }
 
-/** Parse `/o/<key>` path or full attach object URL into opaque key. */
+export function previewUrl(base: string, objectKey: string): string {
+  return `${base.replace(/\/$/, "")}${opaquePreviewPath(objectKey)}`;
+}
+
+const OBJECT_REF_PATH = /^\/(?:o|p)\/([A-Za-z0-9_-]+)$/;
+
+/** Parse `/o/<key>`, `/p/<key>`, or full attach object/preview URL into opaque key. */
 export function parseObjectRef(input: string): string | null {
   const trimmed = input.trim();
   if (/^[A-Za-z0-9_-]{20,}$/.test(trimmed) && !trimmed.includes("/")) {
@@ -75,10 +85,10 @@ export function parseObjectRef(input: string): string | null {
   }
   try {
     const url = new URL(trimmed);
-    const match = /^\/o\/([A-Za-z0-9_-]+)$/.exec(url.pathname);
+    const match = OBJECT_REF_PATH.exec(url.pathname);
     return match?.[1] ?? null;
   } catch {
-    const match = /^\/o\/([A-Za-z0-9_-]+)$/.exec(trimmed);
+    const match = OBJECT_REF_PATH.exec(trimmed);
     return match?.[1] ?? null;
   }
 }
@@ -97,7 +107,10 @@ export type AgentRegistryEntry = {
 };
 
 export type PutResponse = {
+  /** Raw object bytes URL (`/o/<key>`) for embeds. */
   url: string;
+  /** Branded human/OG preview page (`/p/<key>`). */
+  preview_url: string;
   key: string;
   content_type: string;
   size: number;

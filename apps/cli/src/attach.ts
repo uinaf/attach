@@ -1,15 +1,14 @@
 import { readFileSync } from "node:fs";
-import { basename } from "node:path";
 import { parseObjectRef, type EnrollResponse, type PutResponse } from "@uinaf/attach-shared";
 import { apiBase, clearCredentials, loadCredentials, saveCredentials } from "./config.ts";
 import { loginWithDeviceFlow } from "./device-flow.ts";
-
-type OutputMode = "url" | "markdown" | "json";
+import { formatPutOutput, type PutOutputMode } from "./put-output.ts";
 
 function usage(): never {
   console.error(`Usage:
   attach login
   attach put <file> [--repo owner/name] [--pr N] [--json|--markdown|--url]
+                         (default prints preview URL; --markdown embeds raw /o URL)
   attach delete <url-or-key>
   attach logout
 
@@ -128,18 +127,8 @@ async function cmdPut(filePath: string, flags: Record<string, string | boolean>)
   const body = (await res.json()) as PutResponse & { error?: string };
   if (!res.ok) throw new Error(body.error ?? `put failed: ${res.status}`);
 
-  const mode = (flags.output as OutputMode | undefined) ?? "url";
-  if (mode === "json") {
-    console.log(JSON.stringify(body, null, 2));
-  } else if (mode === "markdown") {
-    if (body.content_type.startsWith("image/")) {
-      console.log(`![${basename(filePath)}](${body.url})`);
-    } else {
-      console.log(`[${basename(filePath)}](${body.url})`);
-    }
-  } else {
-    console.log(body.url);
-  }
+  const mode = (flags.output as PutOutputMode | undefined) ?? "url";
+  console.log(formatPutOutput(body, mode, filePath));
 }
 
 async function cmdDelete(ref: string): Promise<void> {

@@ -1,0 +1,151 @@
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--fg);
+  font: var(--text-base) / var(--leading-base) var(--font-mono);
+}
+
+.shell {
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: 48px 20px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.chrome {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 24px;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--text-base);
+  color: var(--fg-strong);
+}
+
+.mark {
+  display: block;
+  border: 1px solid var(--border-strong);
+  background: #000;
+}
+
+.nav-raw {
+  flex-shrink: 0;
+  height: 24px;
+  min-height: 24px;
+  padding: 0 10px;
+  font-size: var(--text-sm);
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+.stage {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  min-height: min(52vh, 28rem);
+  margin: 0 -20px;
+  padding: 0;
+  background: color-mix(in srgb, var(--bg-elevated, var(--bg)) 88%, var(--fg) 12%);
+  border-block: 1px solid var(--border);
+}
+
+.stage--file {
+  align-items: flex-start;
+  justify-content: center;
+  gap: 16px;
+  margin: 0;
+  padding: 28px 0;
+  background: transparent;
+  border: 0;
+  min-height: 0;
+}
+
+.media {
+  display: block;
+  width: 100%;
+  max-height: min(70vh, 36rem);
+  object-fit: contain;
+  background: #000;
+}
+
+.file-note {
+  margin: 0;
+  color: var(--fg-muted);
+}
+
+.meta {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.facts {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  gap: 12px 20px;
+}
+
+.facts > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.facts dt {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--fg-subtle);
+  text-transform: lowercase;
+}
+
+.facts dd {
+  margin: 0;
+  color: var(--fg-strong);
+  word-break: break-word;
+}
+
+.digest {
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes ue {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.motion {
+  animation: ue 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--i, 0) * 45ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .motion {
+    animation: none;
+  }
+}
+
+@media (min-width: 640px) {
+  .stage:not(.stage--file) {
+    margin: 0;
+    border: 1px solid var(--border);
+  }
+}

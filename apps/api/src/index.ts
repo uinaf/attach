@@ -4,6 +4,7 @@ import { ApiError, EnrollError, authenticate, ensurePrincipal, mintKeyForPrincip
 import type { Env } from "./env.ts";
 import { allowedUserIds } from "./env.ts";
 import { checkAppUserToken, GitHubAuthError } from "./github.ts";
+import { handleGetPreview } from "./preview.ts";
 import { handleDeleteObject, handleGetObject } from "./serve.ts";
 export { JtiStore } from "./jti.ts";
 import { handlePut } from "./upload.ts";
@@ -134,8 +135,14 @@ export default {
         return new Response(null, { status: res.status, headers: res.headers });
       }
 
+      if (pathname.startsWith("/p/") && request.method === "GET") {
+        const key = pathname.slice("/p/".length);
+        if (!key || key.includes("/")) return error(404, "not_found");
+        return handleGetPreview(env, request, key);
+      }
+
       // Landing/static assets are served by the Workers assets pipeline
-      // (run_worker_first only invokes this script for /v1/* and /o/*).
+      // (run_worker_first only invokes this script for /v1/*, /o/*, /p/*).
       return error(404, "not_found");
     } catch (err) {
       if (err instanceof ApiError) return error(err.status, err.code);

@@ -39,8 +39,11 @@ describe("contract locks", () => {
     ).toBeNull();
   });
 
-  it("parses object delete refs", () => {
+  it("parses object delete refs for raw and preview urls", () => {
     expect(parseObjectRef("https://attach.uinaf.dev/o/abc_def-0123456789ABCDEF")).toBe(
+      "abc_def-0123456789ABCDEF",
+    );
+    expect(parseObjectRef("https://attach.uinaf.dev/p/abc_def-0123456789ABCDEF")).toBe(
       "abc_def-0123456789ABCDEF",
     );
   });

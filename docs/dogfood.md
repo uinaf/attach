@@ -137,4 +137,7 @@ at most once; if the principal is disabled, hard-fail.
 - [x] Create Attach GitHub App and enable device flow
 - [x] Put client id/secret into wrangler secrets + vault (`shared/uinaf-attach-github-app`)
 - [x] Export Glitch App public key into `AGENT_REGISTRY`
-- [ ] Confirm `attach.uinaf.dev` custom domain inventory import is empty-plan clean
+- [x] Confirm `attach.uinaf.dev` custom domain inventory import is empty-plan clean
+- [x] Human device-flow login + put (`altaywtf` / `user:9790196`)
+- [x] Glitch agent enroll + put (`glitch418x[bot]` / `app:4455325`)
+- [x] Confirm `/p/<key>` preview page loads for a live object (raw still at `/o/<key>`)

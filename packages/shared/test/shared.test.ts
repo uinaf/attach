@@ -5,6 +5,7 @@ import {
   parseAgentIssuer,
   parseApiKey,
   parseObjectRef,
+  previewUrl,
   principalId,
 } from "../src/index.ts";
 import { mintApiKey, mintObjectKey, verifyApiKeySecret, hashApiKeySecret } from "../src/crypto.ts";
@@ -52,8 +53,11 @@ describe("objects", () => {
   it("builds and parses object refs", () => {
     const key = mintObjectKey();
     const url = objectUrl("https://attach.uinaf.dev", key);
+    const preview = previewUrl("https://attach.uinaf.dev", key);
     expect(parseObjectRef(url)).toBe(key);
+    expect(parseObjectRef(preview)).toBe(key);
     expect(parseObjectRef(`/o/${key}`)).toBe(key);
+    expect(parseObjectRef(`/p/${key}`)).toBe(key);
     expect(parseObjectRef(key)).toBe(key);
   });
 });

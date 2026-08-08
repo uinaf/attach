@@ -74,9 +74,10 @@ Accounting must be concurrency-safe (D1 transactions).
 - Worker-proxied PUT, 25 MiB streamed (abort oversize; do not trust Content-Length alone)
 - Opaque server-generated object keys (≥128-bit CSPRNG); no overwrite
 - SVG rejected; allowlisted MIME + magic where applicable
-- Routes under `/v1/...`; objects under `/o/<opaque>`
+- Routes under `/v1/...`; raw objects under `/o/<opaque>`; branded preview pages under `/p/<opaque>`
+- Put response: `url` is raw `/o/…` (embeds); `preview_url` is `/p/…` (humans + OG)
 - Object TTL: 2 years
-- Serve with CSP sandbox, nosniff, inline for media / attachment for text; HTTP Range for video
+- Serve raw with CSP sandbox, nosniff, inline for media / attachment for text; HTTP Range for video
 
 ### Takedown
 
