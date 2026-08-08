@@ -58,8 +58,8 @@ Export Glitch's App **public** key (from the PEM already used by Glitch):
 openssl rsa -in glitch-app.pem -pubout -out glitch-app.pub.pem
 ```
 
-Set Worker var/secret `AGENT_REGISTRY` to JSON (public keys are not secret, but
-wrapping as a secret avoids wrangler.toml churn):
+Set Worker secret `AGENT_REGISTRY` to JSON (public keys are not secret, but a
+secret keeps them out of `wrangler.toml`; CF forbids the same name as a var):
 
 ```json
 [
@@ -136,5 +136,5 @@ at most once; if the principal is disabled, hard-fail.
 
 - [x] Create Attach GitHub App and enable device flow
 - [x] Put client id/secret into wrangler secrets + vault (`shared/uinaf-attach-github-app`)
-- [ ] Export Glitch App public key into `AGENT_REGISTRY`
+- [x] Export Glitch App public key into `AGENT_REGISTRY`
 - [ ] Confirm `attach.uinaf.dev` custom domain inventory import is empty-plan clean

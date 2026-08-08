@@ -37,11 +37,9 @@ new_sqlite_classes = ["JtiStore"]
 [vars]
 ALLOWED_GITHUB_USER_IDS = "9790196"
 ATTACH_PUBLIC_BASE = "https://attach.uinaf.dev"
-# Empty until Glitch pubkey is installed via `wrangler secret put AGENT_REGISTRY`.
-AGENT_REGISTRY = "[]"
-# GITHUB_APP_CLIENT_ID / GITHUB_APP_CLIENT_SECRET via `wrangler secret` after App create.
-# AGENT_REGISTRY secret overrides this var when set. Example:
-# [{"app_id":"4455325","slug":"glitch418x","public_keys":[{"pem":"-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----"}]}]
+# Secrets (not vars — CF forbids the same binding in both):
+#   GITHUB_APP_CLIENT_ID / GITHUB_APP_CLIENT_SECRET
+#   AGENT_REGISTRY — JSON agent allowlist + public keys (see docs/dogfood.md)
 
 [observability]
 enabled = true
