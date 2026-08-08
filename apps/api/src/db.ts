@@ -140,39 +140,18 @@ export function putWindowStart(now: number): number {
 }
 
 /** How long a claimed put may stay reserved without an objects row. */
-export const PUT_RESERVATION_TTL_MS = 120_000;
+export const PUT_RESERVATION_TTL_MS = 15 * 60 * 1000;
 
 async function reclaimExpiredReservations(db: D1Database, now: number): Promise<void> {
-  const expired = await db
-    .prepare(
-      `DELETE FROM put_reservations WHERE expires_at <= ?
-       RETURNING principal_id, size_bytes, window_start`,
-    )
-    .bind(now)
-    .all<{ principal_id: string; size_bytes: number; window_start: number }>();
-
-  for (const row of expired.results ?? []) {
-    await db.batch([
-      db
-        .prepare(
-          `UPDATE quota_windows SET puts = puts - 1
-           WHERE principal_id = ? AND window_start = ? AND puts > 0`,
-        )
-        .bind(row.principal_id, row.window_start),
-      db
-        .prepare(
-          `UPDATE principal_usage SET live_bytes = MAX(0, live_bytes - ?)
-           WHERE principal_id = ?`,
-        )
-        .bind(row.size_bytes, row.principal_id),
-    ]);
-  }
+  // Drop expired storage holds only. Rate slots stay until releasePutQuota or
+  // the hour rolls — avoids double-decrement if an in-flight put outlives TTL.
+  await db.prepare("DELETE FROM put_reservations WHERE expires_at <= ?").bind(now).run();
 }
 
 /**
- * Atomically reserve rate + storage quota before upload.
- * Uses upsert counters so concurrent puts cannot both pass a read-then-write check.
- * Writes a TTL'd put_reservations row so crash-after-claim is reclaimed later.
+ * Reserve rate + storage before upload.
+ * Storage capacity is held in put_reservations (not live_bytes) until recordPut
+ * commits the object, so TTL reclaim / release cannot desync committed usage.
  */
 export async function claimPutQuota(
   db: D1Database,
@@ -198,67 +177,55 @@ export async function claimPutQuota(
 
   await reclaimExpiredReservations(db, now);
 
-  const rate = await db
+  const reservationId = crypto.randomUUID();
+  // Cap against committed live_bytes + other active reservations (serialized writes).
+  const reserved = await db
     .prepare(
-      `INSERT INTO quota_windows (principal_id, window_start, puts)
-       VALUES (?, ?, 1)
-       ON CONFLICT(principal_id, window_start) DO UPDATE
-       SET puts = puts + 1
-       WHERE puts < ?`,
+      `INSERT INTO put_reservations (id, principal_id, size_bytes, window_start, expires_at)
+       SELECT ?, ?, ?, ?, ?
+       WHERE (
+         COALESCE((SELECT live_bytes FROM principal_usage WHERE principal_id = ?), 0) +
+         COALESCE((
+           SELECT SUM(size_bytes) FROM put_reservations
+           WHERE principal_id = ? AND expires_at > ?
+         ), 0) + ?
+       ) <= ?`,
     )
-    .bind(principalId, windowStart, PUTS_PER_HOUR)
-    .run();
-  if ((rate.meta.changes ?? 0) === 0) {
-    throw new ApiError(429, "rate_quota");
-  }
-
-  // INSERT…SELECT WHERE caps the first-row path; ON CONFLICT WHERE caps updates.
-  const storage = await db
-    .prepare(
-      `INSERT INTO principal_usage (principal_id, live_bytes)
-       SELECT ?, ?
-       WHERE ? <= ?
-       ON CONFLICT(principal_id) DO UPDATE
-       SET live_bytes = live_bytes + excluded.live_bytes
-       WHERE live_bytes + excluded.live_bytes <= ?`,
+    .bind(
+      reservationId,
+      principalId,
+      sizeBytes,
+      windowStart,
+      now + PUT_RESERVATION_TTL_MS,
+      principalId,
+      principalId,
+      now,
+      sizeBytes,
+      STORAGE_BYTES_LIMIT,
     )
-    .bind(principalId, sizeBytes, sizeBytes, STORAGE_BYTES_LIMIT, STORAGE_BYTES_LIMIT)
     .run();
-  if ((storage.meta.changes ?? 0) === 0) {
-    await db
-      .prepare(
-        `UPDATE quota_windows SET puts = puts - 1
-         WHERE principal_id = ? AND window_start = ? AND puts > 0`,
-      )
-      .bind(principalId, windowStart)
-      .run();
+  if ((reserved.meta.changes ?? 0) === 0) {
     throw new ApiError(413, "storage_quota");
   }
 
-  const reservationId = crypto.randomUUID();
   try {
-    await db
+    const rate = await db
       .prepare(
-        `INSERT INTO put_reservations (id, principal_id, size_bytes, window_start, expires_at)
-         VALUES (?, ?, ?, ?, ?)`,
+        `INSERT INTO quota_windows (principal_id, window_start, puts)
+         VALUES (?, ?, 1)
+         ON CONFLICT(principal_id, window_start) DO UPDATE
+         SET puts = puts + 1
+         WHERE puts < ?`,
       )
-      .bind(reservationId, principalId, sizeBytes, windowStart, now + PUT_RESERVATION_TTL_MS)
+      .bind(principalId, windowStart, PUTS_PER_HOUR)
       .run();
+    if ((rate.meta.changes ?? 0) === 0) {
+      await db.prepare("DELETE FROM put_reservations WHERE id = ?").bind(reservationId).run();
+      throw new ApiError(429, "rate_quota");
+    }
   } catch (err) {
-    await db.batch([
-      db
-        .prepare(
-          `UPDATE quota_windows SET puts = puts - 1
-           WHERE principal_id = ? AND window_start = ? AND puts > 0`,
-        )
-        .bind(principalId, windowStart),
-      db
-        .prepare(
-          `UPDATE principal_usage SET live_bytes = MAX(0, live_bytes - ?)
-           WHERE principal_id = ?`,
-        )
-        .bind(sizeBytes, principalId),
-    ]);
+    if (err instanceof ApiError) throw err;
+    await db.prepare("DELETE FROM put_reservations WHERE id = ?").bind(reservationId).run();
     throw err;
   }
 
@@ -268,7 +235,7 @@ export async function claimPutQuota(
 export async function releasePutQuota(
   db: D1Database,
   principalId: string,
-  sizeBytes: number,
+  _sizeBytes: number,
   windowStart: number,
   reservationId: string,
 ): Promise<void> {
@@ -280,12 +247,6 @@ export async function releasePutQuota(
          WHERE principal_id = ? AND window_start = ? AND puts > 0`,
       )
       .bind(principalId, windowStart),
-    db
-      .prepare(
-        `UPDATE principal_usage SET live_bytes = MAX(0, live_bytes - ?)
-         WHERE principal_id = ?`,
-      )
-      .bind(sizeBytes, principalId),
   ]);
 }
 
@@ -329,7 +290,15 @@ export async function recordPut(
     db
       .prepare("INSERT INTO put_events (id, principal_id, created_at) VALUES (?, ?, ?)")
       .bind(putId, args.principalId, args.now),
-    // Drop the TTL reservation; live_bytes stay with the new objects row.
+    // Move reserved capacity into committed live_bytes.
+    db
+      .prepare(
+        `INSERT INTO principal_usage (principal_id, live_bytes)
+         VALUES (?, ?)
+         ON CONFLICT(principal_id) DO UPDATE
+         SET live_bytes = live_bytes + excluded.live_bytes`,
+      )
+      .bind(args.principalId, args.sizeBytes),
     db.prepare("DELETE FROM put_reservations WHERE id = ?").bind(args.reservationId),
   ]);
 }
