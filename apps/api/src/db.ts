@@ -134,32 +134,140 @@ export async function authenticate(
   };
 }
 
-export async function assertPutQuota(
+/** Hour bucket start (UTC ms). */
+export function putWindowStart(now: number): number {
+  return Math.floor(now / (60 * 60 * 1000)) * (60 * 60 * 1000);
+}
+
+/** How long a claimed put may stay reserved without an objects row. */
+export const PUT_RESERVATION_TTL_MS = 15 * 60 * 1000;
+
+async function reclaimExpiredReservations(db: D1Database, now: number): Promise<void> {
+  // Drop expired storage holds only. Rate slots stay until releasePutQuota or
+  // the hour rolls — avoids double-decrement if an in-flight put outlives TTL.
+  await db.prepare("DELETE FROM put_reservations WHERE expires_at <= ?").bind(now).run();
+}
+
+/** Recompute committed live_bytes from live objects (reservations stay separate). */
+async function reconcileCommittedUsage(
+  db: D1Database,
+  principalId: string,
+  now: number,
+): Promise<void> {
+  await db
+    .prepare(
+      `INSERT INTO principal_usage (principal_id, live_bytes)
+       SELECT ?, COALESCE(SUM(size_bytes), 0)
+       FROM objects
+       WHERE principal_id = ? AND deleted_at IS NULL AND expires_at > ?
+       ON CONFLICT(principal_id) DO UPDATE
+       SET live_bytes = excluded.live_bytes`,
+    )
+    .bind(principalId, principalId, now)
+    .run();
+}
+
+/**
+ * Reserve rate + storage before upload.
+ * Storage capacity is held in put_reservations (not live_bytes) until recordPut
+ * commits the object, so TTL reclaim / release cannot desync committed usage.
+ */
+export async function claimPutQuota(
   db: D1Database,
   principalId: string,
   sizeBytes: number,
   now = Date.now(),
-): Promise<void> {
-  const hourStart = now - 60 * 60 * 1000;
-  const puts = await db
-    .prepare("SELECT COUNT(*) AS c FROM put_events WHERE principal_id = ? AND created_at >= ?")
-    .bind(principalId, hourStart)
-    .first<{ c: number }>();
-  if ((puts?.c ?? 0) >= PUTS_PER_HOUR) {
-    throw new ApiError(429, "rate_quota");
-  }
-
-  const stored = await db
-    .prepare(
-      `SELECT COALESCE(SUM(size_bytes), 0) AS bytes
-       FROM objects
-       WHERE principal_id = ? AND deleted_at IS NULL AND expires_at > ?`,
-    )
-    .bind(principalId, now)
-    .first<{ bytes: number }>();
-  if ((stored?.bytes ?? 0) + sizeBytes > STORAGE_BYTES_LIMIT) {
+): Promise<{ windowStart: number; reservationId: string }> {
+  if (sizeBytes > STORAGE_BYTES_LIMIT) {
     throw new ApiError(413, "storage_quota");
   }
+
+  const windowStart = putWindowStart(now);
+
+  // Soft-delete TTL-expired rows (usage healed by reconcile below).
+  await db
+    .prepare(
+      `UPDATE objects SET deleted_at = ?
+       WHERE principal_id = ? AND deleted_at IS NULL AND expires_at <= ?`,
+    )
+    .bind(now, principalId, now)
+    .run();
+
+  // Heal migrate-before-deploy / crash desync; live_bytes is committed-only.
+  await reconcileCommittedUsage(db, principalId, now);
+  await reclaimExpiredReservations(db, now);
+
+  const reservationId = crypto.randomUUID();
+  // Cap against committed live_bytes + other active reservations (serialized writes).
+  const reserved = await db
+    .prepare(
+      `INSERT INTO put_reservations (id, principal_id, size_bytes, window_start, expires_at)
+       SELECT ?, ?, ?, ?, ?
+       WHERE (
+         COALESCE((SELECT live_bytes FROM principal_usage WHERE principal_id = ?), 0) +
+         COALESCE((
+           SELECT SUM(size_bytes) FROM put_reservations
+           WHERE principal_id = ? AND expires_at > ?
+         ), 0) + ?
+       ) <= ?`,
+    )
+    .bind(
+      reservationId,
+      principalId,
+      sizeBytes,
+      windowStart,
+      now + PUT_RESERVATION_TTL_MS,
+      principalId,
+      principalId,
+      now,
+      sizeBytes,
+      STORAGE_BYTES_LIMIT,
+    )
+    .run();
+  if ((reserved.meta.changes ?? 0) === 0) {
+    throw new ApiError(413, "storage_quota");
+  }
+
+  try {
+    const rate = await db
+      .prepare(
+        `INSERT INTO quota_windows (principal_id, window_start, puts)
+         VALUES (?, ?, 1)
+         ON CONFLICT(principal_id, window_start) DO UPDATE
+         SET puts = puts + 1
+         WHERE puts < ?`,
+      )
+      .bind(principalId, windowStart, PUTS_PER_HOUR)
+      .run();
+    if ((rate.meta.changes ?? 0) === 0) {
+      await db.prepare("DELETE FROM put_reservations WHERE id = ?").bind(reservationId).run();
+      throw new ApiError(429, "rate_quota");
+    }
+  } catch (err) {
+    if (err instanceof ApiError) throw err;
+    await db.prepare("DELETE FROM put_reservations WHERE id = ?").bind(reservationId).run();
+    throw err;
+  }
+
+  return { windowStart, reservationId };
+}
+
+export async function releasePutQuota(
+  db: D1Database,
+  principalId: string,
+  _sizeBytes: number,
+  windowStart: number,
+  reservationId: string,
+): Promise<void> {
+  await db.batch([
+    db.prepare("DELETE FROM put_reservations WHERE id = ?").bind(reservationId),
+    db
+      .prepare(
+        `UPDATE quota_windows SET puts = puts - 1
+         WHERE principal_id = ? AND window_start = ? AND puts > 0`,
+      )
+      .bind(principalId, windowStart),
+  ]);
 }
 
 export async function recordPut(
@@ -175,6 +283,7 @@ export async function recordPut(
     pr: number | null;
     now: number;
     expiresAt: number;
+    reservationId: string;
   },
 ): Promise<void> {
   const putId = crypto.randomUUID();
@@ -201,6 +310,18 @@ export async function recordPut(
     db
       .prepare("INSERT INTO put_events (id, principal_id, created_at) VALUES (?, ?, ?)")
       .bind(putId, args.principalId, args.now),
+    db.prepare("DELETE FROM put_reservations WHERE id = ?").bind(args.reservationId),
+    // Refresh committed usage from objects (includes the row just inserted).
+    db
+      .prepare(
+        `INSERT INTO principal_usage (principal_id, live_bytes)
+         SELECT ?, COALESCE(SUM(size_bytes), 0)
+         FROM objects
+         WHERE principal_id = ? AND deleted_at IS NULL AND expires_at > ?
+         ON CONFLICT(principal_id) DO UPDATE
+         SET live_bytes = excluded.live_bytes`,
+      )
+      .bind(args.principalId, args.principalId, args.now),
   ]);
 }
 
@@ -234,14 +355,31 @@ export async function softDeleteObject(
   principalId: string,
   now = Date.now(),
 ): Promise<boolean> {
-  const result = await db
+  const live = await db
     .prepare(
-      `UPDATE objects SET deleted_at = ?
+      `SELECT size_bytes FROM objects
        WHERE object_key = ? AND principal_id = ? AND deleted_at IS NULL`,
     )
-    .bind(now, objectKey, principalId)
-    .run();
-  return (result.meta.changes ?? 0) > 0;
+    .bind(objectKey, principalId)
+    .first<{ size_bytes: number }>();
+  if (!live) return false;
+
+  // D1 batch is transactional: soft-delete + usage decrement commit together.
+  const results = await db.batch([
+    db
+      .prepare(
+        `UPDATE objects SET deleted_at = ?
+         WHERE object_key = ? AND principal_id = ? AND deleted_at IS NULL`,
+      )
+      .bind(now, objectKey, principalId),
+    db
+      .prepare(
+        `UPDATE principal_usage SET live_bytes = MAX(0, live_bytes - ?)
+         WHERE principal_id = ?`,
+      )
+      .bind(live.size_bytes, principalId),
+  ]);
+  return (results[0]?.meta.changes ?? 0) > 0;
 }
 
 export async function bulkRevokePrincipalKeys(

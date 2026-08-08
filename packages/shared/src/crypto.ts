@@ -54,17 +54,15 @@ export type ApiKeyMaterial = {
 export function mintApiKey(): ApiKeyMaterial {
   const keyId = bytesToBase64Url(randomBytes(8));
   const secret = randomBytes(KEY_SECRET_BYTES);
-  const token = `${KEY_PREFIX}${keyId}_${bytesToBase64Url(secret)}`;
+  // '.' cannot appear in base64url; '_' can, so never use '_' as the separator.
+  const token = `${KEY_PREFIX}${keyId}.${bytesToBase64Url(secret)}`;
   return { token, keyId, secret };
 }
 
-export function parseApiKey(token: string): { keyId: string; secret: Uint8Array } | null {
-  if (!token.startsWith(KEY_PREFIX)) return null;
-  const rest = token.slice(KEY_PREFIX.length);
-  const idx = rest.indexOf("_");
-  if (idx <= 0) return null;
-  const keyId = rest.slice(0, idx);
-  const secretPart = rest.slice(idx + 1);
+function decodeApiKeyParts(
+  keyId: string,
+  secretPart: string,
+): { keyId: string; secret: Uint8Array } | null {
   if (!keyId || !secretPart) return null;
   try {
     const secret = base64UrlToBytes(secretPart);
@@ -73,6 +71,26 @@ export function parseApiKey(token: string): { keyId: string; secret: Uint8Array 
   } catch {
     return null;
   }
+}
+
+export function parseApiKey(token: string): { keyId: string; secret: Uint8Array } | null {
+  if (!token.startsWith(KEY_PREFIX)) return null;
+  const rest = token.slice(KEY_PREFIX.length);
+
+  // Current format: keyId.secret ('.' cannot appear in base64url).
+  const dot = rest.indexOf(".");
+  if (dot > 0) {
+    if (rest.includes(".", dot + 1)) return null;
+    return decodeApiKeyParts(rest.slice(0, dot), rest.slice(dot + 1));
+  }
+
+  // Legacy format: keyId_secret. Secret length is fixed, so parse from the end
+  // (keyId itself may contain '_' from base64url).
+  const secretB64Len = Math.ceil((KEY_SECRET_BYTES * 4) / 3);
+  if (rest.length < secretB64Len + 2) return null;
+  const sep = rest.length - secretB64Len - 1;
+  if (rest[sep] !== "_") return null;
+  return decodeApiKeyParts(rest.slice(0, sep), rest.slice(sep + 1));
 }
 
 export async function hashApiKeySecret(secret: Uint8Array): Promise<Uint8Array> {
