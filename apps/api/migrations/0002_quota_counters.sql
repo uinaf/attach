@@ -30,19 +30,9 @@ WHERE deleted_at IS NULL AND expires_at > (CAST(strftime('%s', 'now') AS INTEGER
 GROUP BY principal_id;
 
 -- Soft-delete already-expired rows without touching live_bytes (they were
--- never counted above). Must run before the soft-delete trigger is created.
+-- never counted above). Application code adjusts live_bytes on delete so a
+-- migrate-before-deploy rollout cannot desync while the old worker is live.
 UPDATE objects
 SET deleted_at = (CAST(strftime('%s', 'now') AS INTEGER) * 1000)
 WHERE deleted_at IS NULL
   AND expires_at <= (CAST(strftime('%s', 'now') AS INTEGER) * 1000);
-
--- Atomically decrement live_bytes whenever an object is soft-deleted.
-CREATE TRIGGER trg_objects_soft_delete_usage
-AFTER UPDATE OF deleted_at ON objects
-FOR EACH ROW
-WHEN OLD.deleted_at IS NULL AND NEW.deleted_at IS NOT NULL
-BEGIN
-  UPDATE principal_usage
-  SET live_bytes = MAX(0, live_bytes - OLD.size_bytes)
-  WHERE principal_id = NEW.principal_id;
-END;

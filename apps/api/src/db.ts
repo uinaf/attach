@@ -165,15 +165,25 @@ export async function claimPutQuota(
 
   const windowStart = putWindowStart(now);
 
-  // Soft-delete TTL-expired rows; trg_objects_soft_delete_usage decrements
-  // live_bytes once per row in the same statement (crash-safe, claim-owned).
-  await db
+  // Soft-delete TTL-expired rows; decrement only bytes this statement marked.
+  const marked = await db
     .prepare(
       `UPDATE objects SET deleted_at = ?
-       WHERE principal_id = ? AND deleted_at IS NULL AND expires_at <= ?`,
+       WHERE principal_id = ? AND deleted_at IS NULL AND expires_at <= ?
+       RETURNING size_bytes`,
     )
     .bind(now, principalId, now)
-    .run();
+    .all<{ size_bytes: number }>();
+  const expiredBytes = (marked.results ?? []).reduce((sum, row) => sum + row.size_bytes, 0);
+  if (expiredBytes > 0) {
+    await db
+      .prepare(
+        `UPDATE principal_usage SET live_bytes = MAX(0, live_bytes - ?)
+         WHERE principal_id = ?`,
+      )
+      .bind(expiredBytes, principalId)
+      .run();
+  }
 
   await reclaimExpiredReservations(db, now);
 
@@ -333,15 +343,24 @@ export async function softDeleteObject(
   principalId: string,
   now = Date.now(),
 ): Promise<boolean> {
-  // Trigger trg_objects_soft_delete_usage decrements live_bytes atomically.
-  const result = await db
+  const marked = await db
     .prepare(
       `UPDATE objects SET deleted_at = ?
-       WHERE object_key = ? AND principal_id = ? AND deleted_at IS NULL`,
+       WHERE object_key = ? AND principal_id = ? AND deleted_at IS NULL
+       RETURNING size_bytes`,
     )
     .bind(now, objectKey, principalId)
+    .first<{ size_bytes: number }>();
+  if (!marked) return false;
+
+  await db
+    .prepare(
+      `UPDATE principal_usage SET live_bytes = MAX(0, live_bytes - ?)
+       WHERE principal_id = ?`,
+    )
+    .bind(marked.size_bytes, principalId)
     .run();
-  return (result.meta.changes ?? 0) > 0;
+  return true;
 }
 
 export async function bulkRevokePrincipalKeys(
