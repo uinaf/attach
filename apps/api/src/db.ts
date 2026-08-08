@@ -131,17 +131,12 @@ export async function authenticate(
   };
 }
 
-/** Hour bucket start (UTC ms). */
-export function putWindowStart(now: number): number {
-  return Math.floor(now / (60 * 60 * 1000)) * (60 * 60 * 1000);
-}
-
 /** How long a claimed put may stay reserved without an objects row. */
 export const PUT_RESERVATION_TTL_MS = 15 * 60 * 1000;
+const PUT_WINDOW_MS = 60 * 60 * 1000;
 
 async function reclaimExpiredReservations(db: D1Database, now: number): Promise<void> {
-  // Drop expired storage holds only. Rate slots stay until releasePutQuota or
-  // the hour rolls — avoids double-decrement if an in-flight put outlives TTL.
+  // Successful rolling-rate entries live in put_events; abandoned claims expire here.
   await db.prepare("DELETE FROM put_reservations WHERE expires_at <= ?").bind(now).run();
 }
 
@@ -180,18 +175,15 @@ export async function claimPutQuota(
   principalId: string,
   sizeBytes: number,
   now = Date.now(),
-): Promise<{ windowStart: number; reservationId: string }> {
+): Promise<{ reservationId: string }> {
   if (sizeBytes > STORAGE_BYTES_LIMIT) {
     throw new ApiError(413, "storage_quota");
   }
-
-  const windowStart = putWindowStart(now);
 
   await expirePrincipalObjects(db, principalId, now);
   await reclaimExpiredReservations(db, now);
 
   const reservationId = crypto.randomUUID();
-  // Cap against committed live_bytes + other active reservations (serialized writes).
   const reserved = await db
     .prepare(
       `INSERT INTO put_reservations (id, principal_id, size_bytes, window_start, expires_at)
@@ -202,65 +194,56 @@ export async function claimPutQuota(
            SELECT SUM(size_bytes) FROM put_reservations
            WHERE principal_id = ? AND expires_at > ?
          ), 0) + ?
-       ) <= ?`,
+       ) <= ?
+       AND (
+         (SELECT COUNT(*) FROM put_events
+          WHERE principal_id = ? AND created_at > ?) +
+         (SELECT COUNT(*) FROM put_reservations
+          WHERE principal_id = ? AND expires_at > ?)
+       ) < ?`,
     )
     .bind(
       reservationId,
       principalId,
       sizeBytes,
-      windowStart,
+      now,
       now + PUT_RESERVATION_TTL_MS,
       principalId,
       principalId,
       now,
       sizeBytes,
       STORAGE_BYTES_LIMIT,
+      principalId,
+      now - PUT_WINDOW_MS,
+      principalId,
+      now,
+      PUTS_PER_HOUR,
     )
     .run();
   if ((reserved.meta.changes ?? 0) === 0) {
-    throw new ApiError(413, "storage_quota");
-  }
-
-  try {
-    const rate = await db
+    const capacity = await db
       .prepare(
-        `INSERT INTO quota_windows (principal_id, window_start, puts)
-         VALUES (?, ?, 1)
-         ON CONFLICT(principal_id, window_start) DO UPDATE
-         SET puts = puts + 1
-         WHERE puts < ?`,
+        `SELECT
+           COALESCE((SELECT live_bytes FROM principal_usage WHERE principal_id = ?), 0) AS live_bytes,
+           COALESCE((SELECT SUM(size_bytes) FROM put_reservations
+                     WHERE principal_id = ? AND expires_at > ?), 0) AS reserved_bytes`,
       )
-      .bind(principalId, windowStart, PUTS_PER_HOUR)
-      .run();
-    if ((rate.meta.changes ?? 0) === 0) {
-      await db.prepare("DELETE FROM put_reservations WHERE id = ?").bind(reservationId).run();
-      throw new ApiError(429, "rate_quota");
+      .bind(principalId, principalId, now)
+      .first<{ live_bytes: number; reserved_bytes: number }>();
+    if (
+      (capacity?.live_bytes ?? 0) + (capacity?.reserved_bytes ?? 0) + sizeBytes >
+      STORAGE_BYTES_LIMIT
+    ) {
+      throw new ApiError(413, "storage_quota");
     }
-  } catch (err) {
-    if (err instanceof ApiError) throw err;
-    await db.prepare("DELETE FROM put_reservations WHERE id = ?").bind(reservationId).run();
-    throw err;
+    throw new ApiError(429, "rate_quota");
   }
 
-  return { windowStart, reservationId };
+  return { reservationId };
 }
 
-export async function releasePutQuota(
-  db: D1Database,
-  principalId: string,
-  _sizeBytes: number,
-  windowStart: number,
-  reservationId: string,
-): Promise<void> {
-  await db.batch([
-    db.prepare("DELETE FROM put_reservations WHERE id = ?").bind(reservationId),
-    db
-      .prepare(
-        `UPDATE quota_windows SET puts = puts - 1
-         WHERE principal_id = ? AND window_start = ? AND puts > 0`,
-      )
-      .bind(principalId, windowStart),
-  ]);
+export async function releasePutQuota(db: D1Database, reservationId: string): Promise<void> {
+  await db.prepare("DELETE FROM put_reservations WHERE id = ?").bind(reservationId).run();
 }
 
 export async function recordPut(

@@ -1,7 +1,7 @@
 import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import { claimPutQuota, recordPut, softDeleteObject } from "../../src/db.ts";
-import { STORAGE_BYTES_LIMIT } from "@uinaf/attach-shared";
+import { PUTS_PER_HOUR, STORAGE_BYTES_LIMIT } from "@uinaf/attach-shared";
 
 const now = Date.parse("2026-08-08T15:30:00.000Z");
 
@@ -83,5 +83,32 @@ describe("D1 quota (workers pool)", () => {
       .bind(principal)
       .first<{ bytes: number }>();
     expect(usage?.bytes).toBe(50);
+  });
+
+  it("caps concurrent rolling-hour reservations", async () => {
+    const principal = `user:workers-rate-${crypto.randomUUID()}`;
+    await env.DB.prepare(
+      "INSERT INTO principals (id, kind, display, enabled, created_at) VALUES (?, 'user', 't', 1, ?)",
+    )
+      .bind(principal, now)
+      .run();
+
+    const results = await Promise.allSettled(
+      Array.from({ length: PUTS_PER_HOUR + 2 }, () => claimPutQuota(env.DB, principal, 1, now)),
+    );
+    const fulfilled = results.filter((result) => result.status === "fulfilled");
+    const rejected = results.filter((result) => result.status === "rejected");
+    expect(fulfilled).toHaveLength(PUTS_PER_HOUR);
+    expect(rejected).toHaveLength(2);
+    for (const result of rejected) {
+      expect(result.reason).toMatchObject({ status: 429, code: "rate_quota" });
+    }
+
+    const active = await env.DB.prepare(
+      "SELECT COUNT(*) AS count FROM put_reservations WHERE principal_id = ?",
+    )
+      .bind(principal)
+      .first<{ count: number }>();
+    expect(active?.count).toBe(PUTS_PER_HOUR);
   });
 });

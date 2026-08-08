@@ -50,7 +50,7 @@ describe("claimPutQuota / release / recordPut", () => {
 
     const again = await claimPutQuota(db, principal, 50, now + 1);
     expect(again.reservationId).toBeTruthy();
-    await releasePutQuota(db, principal, 50, again.windowStart, again.reservationId);
+    await releasePutQuota(db, again.reservationId);
   });
 
   it("rejects when storage would exceed the limit", async () => {

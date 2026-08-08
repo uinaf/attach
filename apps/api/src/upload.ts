@@ -65,12 +65,7 @@ export async function handlePut(env: Env, request: Request, auth: AuthedKey): Pr
   if (!contentType) throw new ApiError(415, "unsupported_media");
 
   const now = Date.now();
-  const { windowStart, reservationId } = await claimPutQuota(
-    env.DB,
-    auth.principal.id,
-    body.byteLength,
-    now,
-  );
+  const { reservationId } = await claimPutQuota(env.DB, auth.principal.id, body.byteLength, now);
 
   const expiresAt = now + OBJECT_TTL_MS;
   const repo = request.headers.get("x-attach-repo");
@@ -128,7 +123,7 @@ export async function handlePut(env: Env, request: Request, auth: AuthedKey): Pr
       }
     }
     try {
-      await releasePutQuota(env.DB, auth.principal.id, body.byteLength, windowStart, reservationId);
+      await releasePutQuota(env.DB, reservationId);
     } catch {
       // cleanup must not mask the original put/commit failure
     }
