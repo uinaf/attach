@@ -32,7 +32,8 @@ npm i -g @uinaf/attach-cli
 
 ## Worker
 
-`production` Environment + wrangler. See [Dogfood setup](dogfood.md).
+Push to `main` → GitHub Environment `production` → wrangler. Env names and
+Cloudflare runtime secrets: [Deploy](deploy.md).
 
 ```bash
 pnpm run deploy

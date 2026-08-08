@@ -93,4 +93,3 @@ admin CLI in v1.
 - Upload path never accepts GitHub tokens — only `att_` keys.
 - jti replay is structurally impossible without DO/D1 uniqueness.
 - Self-hosters pin their own App client id, allowlist, and agent pubkeys.
-- Dogfood day one: human `9790196` (altaywtf); agent Glitch `4455325` / `glitch418x`.

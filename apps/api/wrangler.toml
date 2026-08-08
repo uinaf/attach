@@ -5,8 +5,7 @@ compatibility_flags = ["nodejs_compat"]
 workers_dev = true
 preview_urls = false
 
-# Custom domain attach.uinaf.dev is bound in uinaf/infra
-# (cloudflare_workers_custom_domain) after the Worker exists.
+# Bind the public hostname to this Worker after the script exists.
 
 [assets]
 directory = "../web/dist"
@@ -23,7 +22,8 @@ jurisdiction = "eu"
 [[d1_databases]]
 binding = "DB"
 database_name = "attach"
-database_id = "12791514-1a8e-4aa2-9e2a-25707ac93d8d"
+# Patched at deploy from CLOUDFLARE_D1_DATABASE_ID (see apps/api/scripts/deploy.mjs).
+database_id = "00000000-0000-0000-0000-000000000000"
 migrations_dir = "migrations"
 
 [[durable_objects.bindings]]
@@ -34,12 +34,11 @@ class_name = "JtiStore"
 tag = "v1"
 new_sqlite_classes = ["JtiStore"]
 
-[vars]
-ALLOWED_GITHUB_USER_IDS = "9790196"
-ATTACH_PUBLIC_BASE = "https://attach.uinaf.dev"
+# Plain-text Worker vars are supplied at deploy time (not committed here):
+#   ALLOWED_GITHUB_USER_IDS, ATTACH_PUBLIC_BASE
 # Secrets (not vars — CF forbids the same binding in both):
 #   GITHUB_APP_CLIENT_ID / GITHUB_APP_CLIENT_SECRET
-#   AGENT_REGISTRY — JSON agent allowlist + public keys (see docs/dogfood.md)
+#   AGENT_REGISTRY — JSON agent allowlist + public keys (see docs/deploy.md)
 
 [observability]
 enabled = true

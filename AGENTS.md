@@ -10,25 +10,25 @@ Keep tracker links out of package-facing docs (`README.md`).
 
 ## Orientation
 
-- Auth/upload contract: `docs/adr-001-auth-and-principals.md`
-- Operator setup: `docs/dogfood.md`
-- Release pipelines: `docs/releasing.md`
-- Worker: `apps/api`
-- CLI: `apps/cli` → npm `@uinaf/attach-cli` / `uinaf/gh-attach`
-- Landing: `apps/web` (uses `@uinaf/design`)
+| Doc                                                  | When                                            |
+| ---------------------------------------------------- | ----------------------------------------------- |
+| [Contributing](CONTRIBUTING.md)                      | setup, verify, PR flow                          |
+| [Auth contract](docs/adr-001-auth-and-principals.md) | principals, enroll, quotas, serve/takedown      |
+| [Deploy](docs/deploy.md)                             | self-host, GH/CF vs local vault, agent registry |
+| [Releasing](docs/releasing.md)                       | Worker CD + npm `@uinaf/attach-cli`             |
+
+| Path       | Role                                        |
+| ---------- | ------------------------------------------- |
+| `apps/api` | Worker                                      |
+| `apps/cli` | npm `@uinaf/attach-cli` / `uinaf/gh-attach` |
+| `apps/web` | landing (`@uinaf/design`)                   |
 
 ## Rules
 
 - `put` accepts only `att_` keys. Never accept GitHub tokens on upload.
-- Agent JWT: `iss=attach:<app_id>`, `aud=attach.uinaf.dev`, `exp≤120s`, DO jti.
+- Agent JWT: `iss=attach:<app_id>`, `aud` matches `ATTACH_PUBLIC_BASE` host, `exp≤120s`, DO jti.
 - Quotas are per principal; re-enroll must not reset them.
 - Objects: raw `/o/<key>`, preview `/p/<key>`; put returns both `url` and `preview_url`.
-- Do not commit secrets, PEM private keys, or font binaries.
+- Do not commit secrets, PEM private keys, account/D1 ids, or font binaries.
 - Prefer vite-plus (`vp`) for check/test/build; wrangler for Worker deploy.
-
-## Verify
-
-```bash
-pnpm install --frozen-lockfile
-pnpm exec vp run ready
-```
+- Production CD reads GitHub Environment `production`; runtime secrets live on Cloudflare. Vault is local-only (see [Deploy](docs/deploy.md)).

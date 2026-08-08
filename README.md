@@ -37,14 +37,6 @@ attach delete <url-or-key>
 ## Docs
 
 - [Auth contract](docs/adr-001-auth-and-principals.md) — principals, enroll, quotas, serve/takedown
-- [Dogfood setup](docs/dogfood.md) — Attach App, secrets, agent registry
-- [Releasing](docs/releasing.md) — Worker deploy + npm `@uinaf/attach-cli`
-
-## Contributing
-
-See [Contributing](CONTRIBUTING.md). Local verify:
-
-```bash
-pnpm install --frozen-lockfile
-pnpm exec vp run ready
-```
+- [Deploy](docs/deploy.md) — self-host, credentials, agent registry
+- [Releasing](docs/releasing.md) — Worker CD + npm `@uinaf/attach-cli`
+- [Contributing](CONTRIBUTING.md) — setup, verify, PRs

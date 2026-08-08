@@ -63,4 +63,7 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_D1_DATABASE_ID: ${{ vars.CLOUDFLARE_D1_DATABASE_ID }}
+          ALLOWED_GITHUB_USER_IDS: ${{ vars.ALLOWED_GITHUB_USER_IDS }}
+          ATTACH_PUBLIC_BASE: ${{ vars.ATTACH_PUBLIC_BASE }}
         run: vp run deploy
