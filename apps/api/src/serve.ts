@@ -4,19 +4,41 @@ import type { Env } from "./env.ts";
 import { ApiError } from "./db.ts";
 
 const OBJECT_CSP = "sandbox; default-src 'none'";
+const OBJECT_CACHE_CONTROL = "public, max-age=0, must-revalidate";
 
-function objectHeaders(contentType: string, size: number, extra: HeadersInit = {}): Headers {
+function objectHeaders(
+  contentType: string,
+  size: number,
+  digest: string,
+  extra: HeadersInit = {},
+): Headers {
   const headers = new Headers(extra);
   headers.set("Content-Type", contentType);
   headers.set("Content-Disposition", contentDisposition(contentType));
   headers.set("Content-Security-Policy", OBJECT_CSP);
   headers.set("X-Content-Type-Options", "nosniff");
-  headers.set("Cache-Control", "public, max-age=31536000, immutable");
+  headers.set("Cache-Control", OBJECT_CACHE_CONTROL);
+  headers.set("ETag", `"${digest}"`);
   headers.set("Accept-Ranges", "bytes");
   if (!headers.has("Content-Length") && size >= 0) {
     headers.set("Content-Length", String(size));
   }
   return headers;
+}
+
+function objectNotFound(): Response {
+  return new Response("not found", {
+    status: 404,
+    headers: { "Cache-Control": "no-store" },
+  });
+}
+
+function matchesEtag(header: string | null, etag: string): boolean {
+  if (!header) return false;
+  return header.split(",").some((candidate) => {
+    const value = candidate.trim();
+    return value === "*" || value === etag || value === `W/${etag}`;
+  });
 }
 
 function parseRange(
@@ -51,7 +73,17 @@ export async function handleGetObject(
   objectKey: string,
 ): Promise<Response> {
   const meta = await getLiveObject(env.DB, objectKey);
-  if (!meta) return new Response("not found", { status: 404 });
+  if (!meta) return objectNotFound();
+
+  const etag = `"${meta.digest}"`;
+  if (matchesEtag(request.headers.get("if-none-match"), etag)) {
+    const obj = await env.BUCKET.head(objectKey);
+    if (!obj) return objectNotFound();
+    return new Response(null, {
+      status: 304,
+      headers: objectHeaders(meta.content_type, meta.size_bytes, meta.digest),
+    });
+  }
 
   const range = parseRange(request.headers.get("range"), meta.size_bytes);
   if (range === "invalid") {
@@ -65,18 +97,18 @@ export async function handleGetObject(
     const obj = await env.BUCKET.get(objectKey, {
       range: { offset: range.start, length: range.end - range.start + 1 },
     });
-    if (!obj) return new Response("not found", { status: 404 });
-    const headers = objectHeaders(meta.content_type, range.end - range.start + 1, {
+    if (!obj) return objectNotFound();
+    const headers = objectHeaders(meta.content_type, range.end - range.start + 1, meta.digest, {
       "Content-Range": `bytes ${range.start}-${range.end}/${meta.size_bytes}`,
     });
     return new Response(obj.body, { status: 206, headers });
   }
 
   const obj = await env.BUCKET.get(objectKey);
-  if (!obj) return new Response("not found", { status: 404 });
+  if (!obj) return objectNotFound();
   return new Response(obj.body, {
     status: 200,
-    headers: objectHeaders(meta.content_type, meta.size_bytes),
+    headers: objectHeaders(meta.content_type, meta.size_bytes, meta.digest),
   });
 }
 

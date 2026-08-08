@@ -88,8 +88,10 @@ Accounting must be concurrency-safe (D1 transactions).
 ### Takedown
 
 Authenticated delete by owning principal removes the R2 object and marks the
-row deleted (storage quota released). CDN/cache purge is best-effort; document
-propagation latency. CLI: `gh attach delete <url-or-key>`.
+row deleted (storage quota released). Raw objects use a digest ETag with
+mandatory revalidation, so a cached response must re-check the live D1 row;
+preview HTML may remain cached for up to 60 seconds. CLI:
+`gh attach delete <url-or-key>`.
 
 Admin allowlist/registry changes are config + redeploy (or secret update). No
 admin CLI in v1.
