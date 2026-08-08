@@ -148,6 +148,25 @@ async function reclaimExpiredReservations(db: D1Database, now: number): Promise<
   await db.prepare("DELETE FROM put_reservations WHERE expires_at <= ?").bind(now).run();
 }
 
+/** Recompute committed live_bytes from live objects (reservations stay separate). */
+async function reconcileCommittedUsage(
+  db: D1Database,
+  principalId: string,
+  now: number,
+): Promise<void> {
+  await db
+    .prepare(
+      `INSERT INTO principal_usage (principal_id, live_bytes)
+       SELECT ?, COALESCE(SUM(size_bytes), 0)
+       FROM objects
+       WHERE principal_id = ? AND deleted_at IS NULL AND expires_at > ?
+       ON CONFLICT(principal_id) DO UPDATE
+       SET live_bytes = excluded.live_bytes`,
+    )
+    .bind(principalId, principalId, now)
+    .run();
+}
+
 /**
  * Reserve rate + storage before upload.
  * Storage capacity is held in put_reservations (not live_bytes) until recordPut
@@ -165,26 +184,17 @@ export async function claimPutQuota(
 
   const windowStart = putWindowStart(now);
 
-  // Soft-delete TTL-expired rows; decrement only bytes this statement marked.
-  const marked = await db
+  // Soft-delete TTL-expired rows (usage healed by reconcile below).
+  await db
     .prepare(
       `UPDATE objects SET deleted_at = ?
-       WHERE principal_id = ? AND deleted_at IS NULL AND expires_at <= ?
-       RETURNING size_bytes`,
+       WHERE principal_id = ? AND deleted_at IS NULL AND expires_at <= ?`,
     )
     .bind(now, principalId, now)
-    .all<{ size_bytes: number }>();
-  const expiredBytes = (marked.results ?? []).reduce((sum, row) => sum + row.size_bytes, 0);
-  if (expiredBytes > 0) {
-    await db
-      .prepare(
-        `UPDATE principal_usage SET live_bytes = MAX(0, live_bytes - ?)
-         WHERE principal_id = ?`,
-      )
-      .bind(expiredBytes, principalId)
-      .run();
-  }
+    .run();
 
+  // Heal migrate-before-deploy / crash desync; live_bytes is committed-only.
+  await reconcileCommittedUsage(db, principalId, now);
   await reclaimExpiredReservations(db, now);
 
   const reservationId = crypto.randomUUID();
@@ -300,16 +310,18 @@ export async function recordPut(
     db
       .prepare("INSERT INTO put_events (id, principal_id, created_at) VALUES (?, ?, ?)")
       .bind(putId, args.principalId, args.now),
-    // Move reserved capacity into committed live_bytes.
+    db.prepare("DELETE FROM put_reservations WHERE id = ?").bind(args.reservationId),
+    // Refresh committed usage from objects (includes the row just inserted).
     db
       .prepare(
         `INSERT INTO principal_usage (principal_id, live_bytes)
-         VALUES (?, ?)
+         SELECT ?, COALESCE(SUM(size_bytes), 0)
+         FROM objects
+         WHERE principal_id = ? AND deleted_at IS NULL AND expires_at > ?
          ON CONFLICT(principal_id) DO UPDATE
-         SET live_bytes = live_bytes + excluded.live_bytes`,
+         SET live_bytes = excluded.live_bytes`,
       )
-      .bind(args.principalId, args.sizeBytes),
-    db.prepare("DELETE FROM put_reservations WHERE id = ?").bind(args.reservationId),
+      .bind(args.principalId, args.principalId, args.now),
   ]);
 }
 
@@ -343,24 +355,31 @@ export async function softDeleteObject(
   principalId: string,
   now = Date.now(),
 ): Promise<boolean> {
-  const marked = await db
+  const live = await db
     .prepare(
-      `UPDATE objects SET deleted_at = ?
-       WHERE object_key = ? AND principal_id = ? AND deleted_at IS NULL
-       RETURNING size_bytes`,
+      `SELECT size_bytes FROM objects
+       WHERE object_key = ? AND principal_id = ? AND deleted_at IS NULL`,
     )
-    .bind(now, objectKey, principalId)
+    .bind(objectKey, principalId)
     .first<{ size_bytes: number }>();
-  if (!marked) return false;
+  if (!live) return false;
 
-  await db
-    .prepare(
-      `UPDATE principal_usage SET live_bytes = MAX(0, live_bytes - ?)
-       WHERE principal_id = ?`,
-    )
-    .bind(marked.size_bytes, principalId)
-    .run();
-  return true;
+  // D1 batch is transactional: soft-delete + usage decrement commit together.
+  const results = await db.batch([
+    db
+      .prepare(
+        `UPDATE objects SET deleted_at = ?
+         WHERE object_key = ? AND principal_id = ? AND deleted_at IS NULL`,
+      )
+      .bind(now, objectKey, principalId),
+    db
+      .prepare(
+        `UPDATE principal_usage SET live_bytes = MAX(0, live_bytes - ?)
+         WHERE principal_id = ?`,
+      )
+      .bind(live.size_bytes, principalId),
+  ]);
+  return (results[0]?.meta.changes ?? 0) > 0;
 }
 
 export async function bulkRevokePrincipalKeys(
