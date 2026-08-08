@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Canonical local gate (same contract CI verify uses via vp run ready).
+# Canonical local gate (same contract CI verify uses via pnpm exec vp run ready).
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

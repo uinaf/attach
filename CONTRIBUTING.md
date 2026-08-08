@@ -7,14 +7,14 @@ Node (see `.node-version`) with Corepack enabled:
 ```sh
 ./scripts/bootstrap.sh
 # equivalent: pnpm install --frozen-lockfile
-# (package.json prepare runs vp config --no-agent)
+# (package.json prepare runs pnpm's local vp config --no-agent)
 ```
 
 ## Validation
 
 ```sh
 ./scripts/verify.sh
-# equivalent: pnpm run verify → vp run ready
+# equivalent: pnpm run verify → pnpm exec vp run ready
 ```
 
 ```sh

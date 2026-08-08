@@ -21,6 +21,10 @@ jobs:
         with:
           persist-credentials: false
 
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+        with:
+          standalone: true
+
       - uses: voidzero-dev/setup-vp@313600b80b104eadebb9111787d37a2e83e014ca # v1.17.0
         with:
           node-version-file: ".node-version"
@@ -28,7 +32,7 @@ jobs:
           run-install: |
             - args: ["--frozen-lockfile"]
 
-      - run: vp run ready
+      - run: pnpm exec vp run ready
 
   secrets:
     if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
@@ -52,6 +56,10 @@ jobs:
         with:
           persist-credentials: false
 
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+        with:
+          standalone: true
+
       - uses: voidzero-dev/setup-vp@313600b80b104eadebb9111787d37a2e83e014ca # v1.17.0
         with:
           node-version-file: ".node-version"
@@ -67,5 +75,5 @@ jobs:
           ALLOWED_GITHUB_USER_IDS: ${{ vars.ALLOWED_GITHUB_USER_IDS }}
           ATTACH_PUBLIC_BASE: ${{ vars.ATTACH_PUBLIC_BASE }}
         run: |
-          vp run -t @uinaf/attach-web#build
+          pnpm exec vp run -t @uinaf/attach-web#build
           node apps/api/scripts/deploy.mjs

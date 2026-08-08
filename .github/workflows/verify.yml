@@ -30,4 +30,4 @@ jobs:
           run-install: |
             - args: ["--frozen-lockfile"]
 
-      - run: vp run ready
+      - run: pnpm exec vp run ready

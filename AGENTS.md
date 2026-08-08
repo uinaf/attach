@@ -34,5 +34,5 @@ Do not put vault paths or payloads in README / CONTRIBUTING / `docs/`.
 - Quotas are per principal; re-enroll must not reset them.
 - Objects: raw `/o/<key>`, preview `/p/<key>`; put returns both `url` and `preview_url`.
 - Do not commit secrets, PEM private keys, account/D1 ids, or font binaries.
-- Prefer vite-plus (`vp`) for check/test/build; wrangler for Worker deploy.
+- Prefer repo-scoped vite-plus via `pnpm exec vp` (never a global `vp`); wrangler for Worker deploy.
 - Prod CD: GitHub Environment `production`. Runtime secrets: Cloudflare.
