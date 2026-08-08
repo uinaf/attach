@@ -149,7 +149,34 @@ export async function claimPutQuota(
   sizeBytes: number,
   now = Date.now(),
 ): Promise<{ windowStart: number }> {
+  if (sizeBytes > STORAGE_BYTES_LIMIT) {
+    throw new ApiError(413, "storage_quota");
+  }
+
   const windowStart = putWindowStart(now);
+
+  // Drop TTL-expired bytes from the counter before claiming (not soft-deleted).
+  await db
+    .prepare(
+      `INSERT INTO principal_usage (principal_id, live_bytes)
+       VALUES (
+         ?,
+         COALESCE(
+           (SELECT SUM(size_bytes) FROM objects
+            WHERE principal_id = ? AND deleted_at IS NULL AND expires_at > ?),
+           0
+         )
+       )
+       ON CONFLICT(principal_id) DO UPDATE
+       SET live_bytes = COALESCE(
+         (SELECT SUM(size_bytes) FROM objects
+          WHERE principal_id = excluded.principal_id
+            AND deleted_at IS NULL AND expires_at > ?),
+         0
+       )`,
+    )
+    .bind(principalId, principalId, now, now)
+    .run();
 
   const rate = await db
     .prepare(

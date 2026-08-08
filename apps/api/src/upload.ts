@@ -95,7 +95,11 @@ export async function handlePut(env: Env, request: Request, auth: AuthedKey): Pr
       expiresAt,
     });
   } catch (err) {
-    await env.BUCKET.delete(objectKey);
+    try {
+      await env.BUCKET.delete(objectKey);
+    } catch {
+      // still release quota reservation below
+    }
     await releasePutQuota(env.DB, auth.principal.id, body.byteLength, windowStart);
     throw err;
   }
