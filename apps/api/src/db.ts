@@ -145,23 +145,29 @@ async function reclaimExpiredReservations(db: D1Database, now: number): Promise<
   await db.prepare("DELETE FROM put_reservations WHERE expires_at <= ?").bind(now).run();
 }
 
-/** Recompute committed live_bytes from live objects (reservations stay separate). */
-async function reconcileCommittedUsage(
+async function expirePrincipalObjects(
   db: D1Database,
   principalId: string,
   now: number,
 ): Promise<void> {
-  await db
-    .prepare(
-      `INSERT INTO principal_usage (principal_id, live_bytes)
-       SELECT ?, COALESCE(SUM(size_bytes), 0)
-       FROM objects
-       WHERE principal_id = ? AND deleted_at IS NULL AND expires_at > ?
-       ON CONFLICT(principal_id) DO UPDATE
-       SET live_bytes = excluded.live_bytes`,
-    )
-    .bind(principalId, principalId, now)
-    .run();
+  await db.batch([
+    db
+      .prepare(
+        `UPDATE principal_usage
+         SET live_bytes = MAX(0, live_bytes - COALESCE((
+           SELECT SUM(size_bytes) FROM objects
+           WHERE principal_id = ? AND deleted_at IS NULL AND expires_at <= ?
+         ), 0))
+         WHERE principal_id = ?`,
+      )
+      .bind(principalId, now, principalId),
+    db
+      .prepare(
+        `UPDATE objects SET deleted_at = ?
+         WHERE principal_id = ? AND deleted_at IS NULL AND expires_at <= ?`,
+      )
+      .bind(now, principalId, now),
+  ]);
 }
 
 /**
@@ -181,18 +187,7 @@ export async function claimPutQuota(
 
   const windowStart = putWindowStart(now);
 
-  // Soft-delete TTL-expired rows (usage healed by reconcile below).
-  // Physical R2 removal is via bucket lifecycle — see docs/deploy.md.
-  await db
-    .prepare(
-      `UPDATE objects SET deleted_at = ?
-       WHERE principal_id = ? AND deleted_at IS NULL AND expires_at <= ?`,
-    )
-    .bind(now, principalId, now)
-    .run();
-
-  // Heal migrate-before-deploy / crash desync; live_bytes is committed-only.
-  await reconcileCommittedUsage(db, principalId, now);
+  await expirePrincipalObjects(db, principalId, now);
   await reclaimExpiredReservations(db, now);
 
   const reservationId = crypto.randomUUID();
@@ -309,17 +304,13 @@ export async function recordPut(
       .prepare("INSERT INTO put_events (id, principal_id, created_at) VALUES (?, ?, ?)")
       .bind(putId, args.principalId, args.now),
     db.prepare("DELETE FROM put_reservations WHERE id = ?").bind(args.reservationId),
-    // Refresh committed usage from objects (includes the row just inserted).
     db
       .prepare(
-        `INSERT INTO principal_usage (principal_id, live_bytes)
-         SELECT ?, COALESCE(SUM(size_bytes), 0)
-         FROM objects
-         WHERE principal_id = ? AND deleted_at IS NULL AND expires_at > ?
+        `INSERT INTO principal_usage (principal_id, live_bytes) VALUES (?, ?)
          ON CONFLICT(principal_id) DO UPDATE
-         SET live_bytes = excluded.live_bytes`,
+         SET live_bytes = principal_usage.live_bytes + excluded.live_bytes`,
       )
-      .bind(args.principalId, args.principalId, args.now),
+      .bind(args.principalId, args.sizeBytes),
   ]);
 }
 

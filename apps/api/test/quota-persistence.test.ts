@@ -100,5 +100,10 @@ describe("claimPutQuota / release / recordPut", () => {
       .bind("old")
       .first<{ d: number | null }>();
     expect(expired?.d).toBe(now);
+    const usage = await db
+      .prepare("SELECT live_bytes AS bytes FROM principal_usage WHERE principal_id = ?")
+      .bind(principal)
+      .first<{ bytes: number }>();
+    expect(usage?.bytes).toBe(0);
   });
 });
