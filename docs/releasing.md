@@ -43,5 +43,5 @@ version.
 
 Push to `main` touching `skills/attach-cli/**` → `.github/workflows/publish-skill.yml`
 → GitHub Environment `skill-release` (`TESSL_TOKEN`) →
-`uinaf/tessl-publish-action` with `review-threshold: 100` →
+`uinaf/tessl-publish-action` with `review-mode: lint` (free plugin lint; use `review-mode: review` only for intentional 100-point scores) →
 `scripts/verify-published-skill.sh` (strict Tessl install + Codex discovery).
