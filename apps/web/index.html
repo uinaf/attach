@@ -4,31 +4,75 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>attach · uinaf</title>
+    <meta name="description" content="upload pr and validation media to a private r2 bucket." />
+    <link rel="canonical" href="https://attach.uinaf.dev/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="attach" />
+    <meta property="og:title" content="attach · uinaf" />
     <meta
-      name="description"
-      content="Self-hosted Cloudflare kit for PR and validation media uploads."
+      property="og:description"
+      content="upload pr and validation media to a private r2 bucket."
     />
+    <meta property="og:url" content="https://attach.uinaf.dev/" />
+    <meta property="og:image" content="https://cdn.uinaf.dev/images/uinaf-computer-og-image.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1024" />
+    <meta property="og:image:height" content="537" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="attach · uinaf" />
+    <meta name="twitter:image" content="https://cdn.uinaf.dev/images/uinaf-computer-og-image.png" />
+    <link rel="icon" href="https://cdn.uinaf.dev/images/uinaf-computer.png" type="image/png" />
     <link rel="stylesheet" href="https://cdn.uinaf.dev/fonts/berkeley-mono/variable/font.css" />
     <link rel="stylesheet" href="/src/styles.css" />
   </head>
-  <body>
+  <body class="uinaf">
     <main class="shell">
-      <div class="label">uinaf · attach</div>
-      <h1>attach</h1>
-      <p>
-        upload pr and validation media to a private r2 bucket. humans enroll via the attach github
-        app; agents exchange a short-lived jwt. puts use
-        <code>att_</code> keys only.
-      </p>
-      <p class="actions">
-        <a href="https://github.com/uinaf/attach">github ↗</a>
-        <a href="/v1/health">health</a>
-        <a href="https://design.uinaf.dev">design</a>
-      </p>
-      <pre class="snippet">
-gh attach login
+      <header class="chrome motion" style="--i: 0">
+        <a class="u-link-plain brand" href="https://uinaf.dev">
+          <img
+            class="mark"
+            src="https://cdn.uinaf.dev/images/uinaf-computer.png"
+            width="24"
+            height="24"
+            alt=""
+          />
+          <span>uinaf</span>
+        </a>
+      </header>
+
+      <div class="hero motion" style="--i: 1">
+        <span class="kicker">
+          <i class="u-dot u-dot--live" aria-hidden="true"></i>
+          <span class="u-label">attach · cloudflare kit</span>
+        </span>
+        <h1>pr media that doesn't rot in the chat.</h1>
+        <p class="lede">
+          upload pr and validation media to a private r2 bucket. humans enroll via the attach github
+          app; agents exchange a short-lived jwt. puts use
+          <code>att_</code> keys only.
+        </p>
+        <div class="actions">
+          <a class="u-btn u-btn-primary" href="https://github.com/uinaf/attach">source ↗</a>
+          <a class="u-btn u-btn-ghost" href="/v1/health">health</a>
+        </div>
+      </div>
+
+      <section class="install motion" style="--i: 2">
+        <span class="u-label">usage</span>
+        <pre class="u-pre"><code>gh attach login
 gh attach put ./shot.png --repo uinaf/foo --pr 12
-gh attach delete &lt;url&gt;</pre>
+gh attach delete &lt;url&gt;</code></pre>
+      </section>
+
+      <hr class="rule" />
+      <footer class="foot motion" style="--i: 3">
+        <span>
+          <a class="u-link-plain" href="https://uinaf.dev">uinaf.dev</a>
+          <span class="u-sep">·</span>
+          <a class="u-link-plain" href="https://github.com/uinaf/attach">gh ↗</a>
+        </span>
+        <a class="u-link-plain" href="mailto:dev@uinaf.dev">dev@uinaf.dev</a>
+      </footer>
     </main>
   </body>
 </html>

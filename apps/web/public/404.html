@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>not found · attach</title>
+    <link rel="icon" href="https://cdn.uinaf.dev/images/uinaf-computer.png" type="image/png" />
     <link rel="stylesheet" href="https://cdn.uinaf.dev/fonts/berkeley-mono/variable/font.css" />
     <link rel="stylesheet" href="https://design.uinaf.dev/tokens.css" />
     <style>
@@ -18,14 +19,28 @@
         margin: 0 auto;
         padding: 64px 20px;
       }
-      a {
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 32px;
         color: var(--fg);
+        text-decoration: none;
+      }
+      .brand img {
+        border: 1px solid var(--border-strong);
+        display: block;
+        background: #000;
       }
     </style>
   </head>
-  <body>
+  <body class="uinaf">
     <main>
-      <p>not found · <a href="/">attach</a></p>
+      <a class="brand u-link-plain" href="/">
+        <img src="https://cdn.uinaf.dev/images/uinaf-computer.png" width="24" height="24" alt="" />
+        <span>attach</span>
+      </a>
+      <p>not found.</p>
     </main>
   </body>
 </html>
