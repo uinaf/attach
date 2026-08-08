@@ -1,5 +1,4 @@
-import { env } from "cloudflare:test";
-// Workers pool runs vitest 3.x — do not import vite-plus/test (vitest 4).
+import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import { claimPutQuota, recordPut } from "../../src/db.ts";
 import { STORAGE_BYTES_LIMIT } from "@uinaf/attach-shared";

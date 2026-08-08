@@ -1,5 +1,5 @@
-import { env, runInDurableObject } from "cloudflare:test";
-// Workers pool runs vitest 3.x — do not import vite-plus/test (vitest 4).
+import { env } from "cloudflare:workers";
+import { runInDurableObject } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 import { JTI_RETENTION_MS } from "@uinaf/attach-shared";
 import { claimJti } from "../../src/jti.ts";
