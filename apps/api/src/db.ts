@@ -143,8 +143,27 @@ export function putWindowStart(now: number): number {
 export const PUT_RESERVATION_TTL_MS = 15 * 60 * 1000;
 
 async function reclaimExpiredReservations(db: D1Database, now: number): Promise<void> {
-  // Storage holds only — rate is charged on successful recordPut, not on claim.
-  await db.prepare("DELETE FROM put_reservations WHERE expires_at <= ?").bind(now).run();
+  // Drop expired storage holds and bill their hour window so abandoned
+  // in-flight puts still consume rate after TTL (keeps the claim-time cap honest).
+  const expired = await db
+    .prepare(
+      `DELETE FROM put_reservations WHERE expires_at <= ?
+       RETURNING principal_id, window_start`,
+    )
+    .bind(now)
+    .all<{ principal_id: string; window_start: number }>();
+
+  for (const row of expired.results ?? []) {
+    await db
+      .prepare(
+        `INSERT INTO quota_windows (principal_id, window_start, puts)
+         VALUES (?, ?, 1)
+         ON CONFLICT(principal_id, window_start) DO UPDATE
+         SET puts = puts + 1`,
+      )
+      .bind(row.principal_id, row.window_start)
+      .run();
+  }
 }
 
 /** Recompute committed live_bytes from live objects (reservations stay separate). */
@@ -290,12 +309,6 @@ export async function recordPut(
   },
 ): Promise<void> {
   const putId = crypto.randomUUID();
-  // Bill the hour bucket the reservation was claimed against (not wall-clock now).
-  const reserved = await db
-    .prepare("SELECT window_start FROM put_reservations WHERE id = ?")
-    .bind(args.reservationId)
-    .first<{ window_start: number }>();
-  const windowStart = reserved?.window_start ?? putWindowStart(args.now);
 
   await db.batch([
     db
@@ -320,16 +333,19 @@ export async function recordPut(
     db
       .prepare("INSERT INTO put_events (id, principal_id, created_at) VALUES (?, ?, ?)")
       .bind(putId, args.principalId, args.now),
-    db.prepare("DELETE FROM put_reservations WHERE id = ?").bind(args.reservationId),
-    // Charge the claim window only after the object is committed.
+    // Bill the claim window only while the reservation still exists.
+    // TTL reclaim bills abandoned slots; a missing row means already charged.
     db
       .prepare(
         `INSERT INTO quota_windows (principal_id, window_start, puts)
-         VALUES (?, ?, 1)
+         SELECT principal_id, window_start, 1
+         FROM put_reservations
+         WHERE id = ?
          ON CONFLICT(principal_id, window_start) DO UPDATE
          SET puts = puts + 1`,
       )
-      .bind(args.principalId, windowStart),
+      .bind(args.reservationId),
+    db.prepare("DELETE FROM put_reservations WHERE id = ?").bind(args.reservationId),
     // Refresh committed usage from objects (includes the row just inserted).
     db
       .prepare(
