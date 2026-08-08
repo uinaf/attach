@@ -11,6 +11,17 @@ CREATE TABLE principal_usage (
   live_bytes INTEGER NOT NULL DEFAULT 0
 );
 
+-- Short-lived put reservations so crash-after-claim can be reclaimed.
+CREATE TABLE put_reservations (
+  id TEXT PRIMARY KEY,
+  principal_id TEXT NOT NULL,
+  size_bytes INTEGER NOT NULL,
+  window_start INTEGER NOT NULL,
+  expires_at INTEGER NOT NULL
+);
+
+CREATE INDEX put_reservations_expires_idx ON put_reservations(expires_at);
+
 -- Seed counters from objects already live at migrate time.
 INSERT INTO principal_usage (principal_id, live_bytes)
 SELECT principal_id, COALESCE(SUM(size_bytes), 0)

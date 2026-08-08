@@ -54,7 +54,12 @@ export async function handlePut(env: Env, request: Request, auth: AuthedKey): Pr
   if (!contentType) throw new ApiError(415, "unsupported_media");
 
   const now = Date.now();
-  const { windowStart } = await claimPutQuota(env.DB, auth.principal.id, body.byteLength, now);
+  const { windowStart, reservationId } = await claimPutQuota(
+    env.DB,
+    auth.principal.id,
+    body.byteLength,
+    now,
+  );
 
   const expiresAt = now + OBJECT_TTL_MS;
   const repo = request.headers.get("x-attach-repo");
@@ -90,6 +95,7 @@ export async function handlePut(env: Env, request: Request, auth: AuthedKey): Pr
       pr,
       now,
       expiresAt,
+      reservationId,
     });
 
     return {
@@ -108,7 +114,7 @@ export async function handlePut(env: Env, request: Request, auth: AuthedKey): Pr
         // still release quota below
       }
     }
-    await releasePutQuota(env.DB, auth.principal.id, body.byteLength, windowStart);
+    await releasePutQuota(env.DB, auth.principal.id, body.byteLength, windowStart, reservationId);
     throw err;
   }
 }
