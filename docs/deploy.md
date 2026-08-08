@@ -3,8 +3,9 @@
 Production Worker deploys from CI — not from a laptop.
 
 Push to `main` → `.github/workflows/main.yml` → GitHub Environment `production`
-→ `apps/api/scripts/deploy.ts` (build landing assets, dry-run the Worker, D1
-migrate, deploy). The dry run must pass before production D1 is mutated.
+→ `apps/api/scripts/deploy.ts` (build landing assets, dry-run the Worker,
+validate R2 lifecycle, D1 migrate, deploy). The dry run and lifecycle gate must
+pass before production D1 is mutated.
 
 ## CD environment (`production`)
 
@@ -41,7 +42,8 @@ Commit that file (do not gitignore it). `ready` / CI run `pnpm --filter @uinaf/a
 Local secrets stay in gitignored `.dev.vars` (see `.dev.vars.example`).
 
 1. Create R2 + D1 matching `wrangler.toml`; put the D1 id in
-   `CLOUDFLARE_D1_DATABASE_ID` (GH env var for CD).
+   `CLOUDFLARE_D1_DATABASE_ID` (GH env var for CD). Configure the required R2
+   lifecycle below before the first CD run.
 2. Create a **per-deploy** GitHub App (device flow, `read:user`, no
    Contents:write). `wrangler secret put` the App client id/secret.
 3. Bind the public hostname to the Worker after the first successful CD.
@@ -65,8 +67,9 @@ Verify before enabling on production:
 - After enablement, confirm a fresh put is not deleted early (spot-check
   object age in the bucket UI).
 
-Document the rule name in your operator notes; keep account/bucket ids out of
-git.
+CD validates an enabled all-prefix age rule of at least 760 days and fails
+before D1 migration if it is absent, disabled, narrower, or earlier. Keep
+account/bucket ids out of git.
 
 CLI against your host:
 

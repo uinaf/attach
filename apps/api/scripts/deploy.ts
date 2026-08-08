@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { requireObjectLifecycle } from "./lifecycle.ts";
 
 const apiRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const tomlPath = join(apiRoot, "wrangler.toml");
@@ -18,6 +19,8 @@ function requireEnv(name: string): string {
 }
 
 const databaseId = requireEnv("CLOUDFLARE_D1_DATABASE_ID");
+const accountId = requireEnv("CLOUDFLARE_ACCOUNT_ID");
+const apiToken = requireEnv("CLOUDFLARE_API_TOKEN");
 const allowedUserIds = requireEnv("ALLOWED_GITHUB_USER_IDS");
 const publicBase = requireEnv("ATTACH_PUBLIC_BASE");
 
@@ -40,6 +43,17 @@ function run(args: string[]): void {
 
 const config = ["--config", "wrangler.deploy.toml"];
 run(["deploy", "--dry-run", "--outdir", "dist", ...config]);
+try {
+  await requireObjectLifecycle({
+    accountId,
+    apiToken,
+    bucket: "attach",
+    jurisdiction: "eu",
+  });
+} catch (error) {
+  console.error(error instanceof Error ? error.message : "r2_lifecycle_check_failed");
+  process.exit(1);
+}
 run(["d1", "migrations", "apply", "attach", "--remote", ...config]);
 run([
   "deploy",
