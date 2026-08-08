@@ -85,6 +85,9 @@ async function handleEnrollAgent(env: Env, request: Request): Promise<Response> 
   } catch (err) {
     if (err instanceof AgentAuthError) return error(err.status, err.code);
     if (err instanceof EnrollError) return error(err.status, err.code);
+    if (err instanceof Error && err.message === "attach_public_base_invalid") {
+      return error(500, "attach_public_base_invalid");
+    }
     console.error("enroll_agent_failed", requestId(), String(err));
     return error(500, "enroll_failed");
   }

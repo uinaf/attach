@@ -58,6 +58,15 @@ describe("agentAudience", () => {
     const env = {} as Env;
     expect(agentAudience(env)).toBe(ATTACH_AUDIENCE);
   });
+
+  it("accepts scheme-less hosts and rejects garbage", () => {
+    expect(agentAudience({ ATTACH_PUBLIC_BASE: "attach.example.test" } as Env)).toBe(
+      "attach.example.test",
+    );
+    expect(() => agentAudience({ ATTACH_PUBLIC_BASE: "://" } as Env)).toThrow(
+      "attach_public_base_invalid",
+    );
+  });
 });
 
 describe("verifyAgentJwt", () => {

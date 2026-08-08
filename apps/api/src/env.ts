@@ -35,15 +35,17 @@ export function publicBase(env: Env, request: Request): string {
 
 /**
  * JWT `aud` host for agent enroll — host of ATTACH_PUBLIC_BASE when set.
- * Never use the request Host (attacker-controlled). If the env var is unset,
- * fall back to the published default host constant.
+ * Never use the request Host. Unset → published default host. Set-but-invalid → throw.
  */
 export function agentAudience(env: Env): string {
-  const base = env.ATTACH_PUBLIC_BASE?.trim();
-  if (!base) return ATTACH_AUDIENCE;
+  const raw = env.ATTACH_PUBLIC_BASE?.trim();
+  if (!raw) return ATTACH_AUDIENCE;
+  const normalized = raw.includes("://") ? raw : `https://${raw}`;
   try {
-    return new URL(base.replace(/\/$/, "")).host;
+    const host = new URL(normalized.replace(/\/$/, "")).host;
+    if (!host) throw new Error("empty_host");
+    return host;
   } catch {
-    return ATTACH_AUDIENCE;
+    throw new Error("attach_public_base_invalid");
   }
 }

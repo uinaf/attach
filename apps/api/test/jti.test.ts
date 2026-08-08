@@ -4,6 +4,7 @@ import { JtiStore } from "../src/jti.ts";
 
 function mockState(initial?: Map<string, number>) {
   let claimed = initial ? new Map(initial) : undefined;
+  let hydrate: Promise<unknown> = Promise.resolve();
   const storage = {
     async get<T>(key: string) {
       if (key === "claimed") return claimed as T | undefined;
@@ -16,7 +17,11 @@ function mockState(initial?: Map<string, number>) {
   };
   return {
     storage,
-    blockConcurrencyWhile: async <T>(fn: () => Promise<T>) => fn(),
+    blockConcurrencyWhile: <T>(fn: () => Promise<T>) => {
+      hydrate = fn();
+      return hydrate as Promise<T>;
+    },
+    awaitHydrate: () => hydrate,
     get claimed() {
       return claimed;
     },
@@ -27,8 +32,7 @@ describe("JtiStore", () => {
   it("claims once and rejects replay", async () => {
     const state = mockState();
     const store = new JtiStore(state as unknown as DurableObjectState);
-    // allow constructor hydrate
-    await Promise.resolve();
+    await state.awaitHydrate();
 
     const now = 1_000_000;
     const first = await store.fetch(
@@ -52,7 +56,7 @@ describe("JtiStore", () => {
     const now = 5_000_000;
     const state = mockState(new Map([["old", now - 1]]));
     const store = new JtiStore(state as unknown as DurableObjectState);
-    await Promise.resolve();
+    await state.awaitHydrate();
 
     const res = await store.fetch(
       new Request("https://jti/claim", {
