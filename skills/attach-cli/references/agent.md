@@ -24,30 +24,34 @@ Reject any flow that uses bare GitHub API JWTs, `jku`, or remote JWKS.
 
 ## Enroll
 
-```http
-POST /v1/enroll/agent
-Authorization: Bearer <jwt>
-Accept: application/json
+```bash
+base="${ATTACH_API_BASE:-https://attach.uinaf.dev}"
+curl -sS -X POST "$base/v1/enroll/agent" \
+  -H "Authorization: Bearer $ATTACH_AGENT_JWT" \
+  -H "Accept: application/json"
 ```
 
-Response includes `token` (`att_…`), `key_id`, `principal` (`app:<id>`).
+Expect JSON with `token` (`att_…`), `key_id`, `principal` (`app:<id>`). If the
+response indicates the principal is disabled, hard-fail.
 
 ## Upload
 
-```http
-PUT /v1/objects
-Authorization: Bearer att_…
-Content-Type: <mime>
+```bash
+base="${ATTACH_API_BASE:-https://attach.uinaf.dev}"
+curl -sS -X PUT "$base/v1/objects" \
+  -H "Authorization: Bearer $ATTACH_ATT_TOKEN" \
+  -H "Content-Type: image/png" \
+  --data-binary @"$FILE"
 ```
 
-Optional metadata headers/query as implemented by the Worker/CLI contract
-(`repo`, `pr`). Response includes `url` (raw `/o/…`) and `preview_url`
-(`/p/…`).
+Optional `repo` / `pr` metadata per Worker/CLI contract. Success only when the
+JSON includes both `url` (raw `/o/…`) and `preview_url` (`/p/…`).
 
 ## Re-enroll
 
-On **401** from put: enroll once more with a new `jti`. If enroll fails because
-the principal is disabled, hard-fail — do not loop.
+On **401** from put: mint a new JWT (`jti`), enroll once, put again. If enroll
+fails because the principal is disabled, or a second put still returns 401,
+hard-fail — do not loop.
 
 ## Secrets
 
