@@ -8,7 +8,7 @@ const tomlPath = join(apiRoot, "wrangler.toml");
 const generatedPath = join(apiRoot, "wrangler.deploy.toml");
 const wranglerJs = join(apiRoot, "node_modules", "wrangler", "bin", "wrangler.js");
 
-function requireEnv(name) {
+function requireEnv(name: string): string {
   const value = process.env[name]?.trim();
   if (!value) {
     console.error(`missing env ${name}`);
@@ -29,7 +29,7 @@ if (patched === toml || !patched.includes(`database_id = "${databaseId}"`)) {
 }
 writeFileSync(generatedPath, patched);
 
-function run(args) {
+function run(args: string[]): void {
   const result = spawnSync(process.execPath, [wranglerJs, ...args], {
     cwd: apiRoot,
     stdio: "inherit",

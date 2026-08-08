@@ -36,7 +36,7 @@ pnpm --filter @uinaf/attach-web build
 pnpm --filter @uinaf/attach-api deploy
 ```
 
-`apps/api/scripts/deploy.mjs` requires:
+`apps/api/scripts/deploy.ts` requires:
 
 | Name                        | Purpose                                 |
 | --------------------------- | --------------------------------------- |

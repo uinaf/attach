@@ -76,4 +76,4 @@ jobs:
           ATTACH_PUBLIC_BASE: ${{ vars.ATTACH_PUBLIC_BASE }}
         run: |
           pnpm exec vp run -t @uinaf/attach-web#build
-          node apps/api/scripts/deploy.mjs
+          node apps/api/scripts/deploy.ts

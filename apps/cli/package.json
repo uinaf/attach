@@ -28,7 +28,7 @@
     "dev": "vp pack --watch",
     "check": "vp check",
     "test": "vp test run",
-    "build": "vp pack && node ./scripts/rename-bin.mjs",
+    "build": "vp pack",
     "prepublishOnly": "pnpm run build"
   },
   "devDependencies": {

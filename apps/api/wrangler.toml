@@ -22,7 +22,7 @@ jurisdiction = "eu"
 [[d1_databases]]
 binding = "DB"
 database_name = "attach"
-# Patched at deploy from CLOUDFLARE_D1_DATABASE_ID (see apps/api/scripts/deploy.mjs).
+# Patched at deploy from CLOUDFLARE_D1_DATABASE_ID (see apps/api/scripts/deploy.ts).
 database_id = "00000000-0000-0000-0000-000000000000"
 migrations_dir = "migrations"
 

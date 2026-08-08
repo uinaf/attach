@@ -11,7 +11,7 @@
     "test": "vp run -r test",
     "build": "vp run -t @uinaf/attach-web#build && vp run -t @uinaf/attach-cli#build",
     "dev": "vp run @uinaf/attach-web#dev",
-    "deploy": "pnpm exec vp run -t @uinaf/attach-web#build && node apps/api/scripts/deploy.mjs",
+    "deploy": "pnpm exec vp run -t @uinaf/attach-web#build && node apps/api/scripts/deploy.ts",
     "prepare": "vp config --no-agent"
   },
   "devDependencies": {

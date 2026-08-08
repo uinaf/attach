@@ -11,7 +11,7 @@ Worker deploy stays independent of npm. Do not make deploy `needs: [release]`.
 
 Publishes from `release.yml` via npm Trusted Publishing (OIDC). The CLI pack
 **bundles** `@uinaf/attach-shared` (self-contained tarball). Bin entry is
-`dist/attach.js` — npm strips `.mjs` bin paths.
+`dist/attach.js` (pack emits `.js` for the npm bin field).
 
 `release` Environment:
 
