@@ -21,27 +21,25 @@ const allowedUserIds = requireEnv("ALLOWED_GITHUB_USER_IDS");
 const publicBase = requireEnv("ATTACH_PUBLIC_BASE");
 
 const toml = readFileSync(tomlPath, "utf8");
-const patched = toml.replace(
-  /(database_name\s*=\s*"attach"\s*\n)database_id\s*=\s*"[^"]*"/,
-  `$1database_id = "${databaseId}"`,
-);
-if (patched === toml) {
+const patched = toml.replace(/database_id\s*=\s*"[^"]*"/, `database_id = "${databaseId}"`);
+if (patched === toml || !patched.includes(`database_id = "${databaseId}"`)) {
   console.error("failed to patch database_id in wrangler.toml");
   process.exit(1);
 }
 writeFileSync(generatedPath, patched);
 
-function run(command, args) {
-  const result = spawnSync(command, args, {
+function run(args) {
+  const result = spawnSync("pnpm", ["exec", "wrangler", ...args], {
     cwd: apiRoot,
     stdio: "inherit",
+    env: process.env,
   });
   if (result.status !== 0) process.exit(result.status ?? 1);
 }
 
 const config = ["--config", "wrangler.deploy.toml"];
-run("wrangler", ["d1", "migrations", "apply", "attach", "--remote", ...config]);
-run("wrangler", [
+run(["d1", "migrations", "apply", "attach", "--remote", ...config]);
+run([
   "deploy",
   ...config,
   "--var",

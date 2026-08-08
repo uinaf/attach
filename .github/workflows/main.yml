@@ -66,4 +66,4 @@ jobs:
           CLOUDFLARE_D1_DATABASE_ID: ${{ vars.CLOUDFLARE_D1_DATABASE_ID }}
           ALLOWED_GITHUB_USER_IDS: ${{ vars.ALLOWED_GITHUB_USER_IDS }}
           ATTACH_PUBLIC_BASE: ${{ vars.ATTACH_PUBLIC_BASE }}
-        run: vp run deploy
+        run: pnpm run deploy
