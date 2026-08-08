@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { DatabaseSync, type SQLInputValue } from "node:sqlite";
 import { fileURLToPath } from "node:url";
@@ -15,8 +15,11 @@ function toSqlValue(v: unknown): SQLInputValue {
 /** Minimal D1Database backed by node:sqlite for quota characterization tests. */
 export function openMemoryD1(): D1Database {
   const sqlite = new DatabaseSync(":memory:");
-  sqlite.exec(readFileSync(join(migrationsDir, "0001_init.sql"), "utf8"));
-  sqlite.exec(readFileSync(join(migrationsDir, "0002_quota_counters.sql"), "utf8"));
+  for (const file of readdirSync(migrationsDir)
+    .filter((name) => name.endsWith(".sql"))
+    .sort()) {
+    sqlite.exec(readFileSync(join(migrationsDir, file), "utf8"));
+  }
 
   const prepare = (sql: string): D1PreparedStatement => {
     const make = (bounds: SQLInputValue[]): D1PreparedStatement => {

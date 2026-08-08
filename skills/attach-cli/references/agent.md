@@ -28,16 +28,17 @@ Prefer language-native HTTP (`fetch`, etc.) that sets `Authorization` from
 memory and parses JSON in-process — never put the bearer in argv, never print
 `att_` to chat or logs.
 
-If you must use curl, keep each secret step self-contained with immediate
-cleanup (do not stack EXIT traps across enroll then put):
+If you must use curl, use a **per-step** EXIT trap (clear it before the next
+step so traps do not stack across enroll → put):
 
 ```bash
 base="${ATTACH_API_BASE:-https://attach.uinaf.dev}"
 hdr="$(mktemp)"; out="$(mktemp)"
+trap 'rm -f "$hdr" "$out"' EXIT
 printf 'Authorization: Bearer %s\nAccept: application/json\n' "$ATTACH_AGENT_JWT" >"$hdr"
 curl -sS -X POST "$base/v1/enroll/agent" -H @"$hdr" -o "$out"
 # parse "$out" in-process for .token → secret var only
-rm -f "$hdr" "$out"
+rm -f "$hdr" "$out"; trap - EXIT
 ```
 
 Expect JSON with `token` (`att_…`), `key_id`, `principal` (`app:<id>`). If the
@@ -45,15 +46,16 @@ response indicates the principal is disabled, hard-fail.
 
 ## Upload
 
-Same rules: prefer native HTTP. Curl pattern (separate temps; delete before next step):
+Same rules: prefer native HTTP. Curl pattern:
 
 ```bash
 base="${ATTACH_API_BASE:-https://attach.uinaf.dev}"
 hdr="$(mktemp)"; out="$(mktemp)"
+trap 'rm -f "$hdr" "$out"' EXIT
 printf 'Authorization: Bearer %s\nContent-Type: image/png\n' "$ATTACH_ATT_TOKEN" >"$hdr"
 curl -sS -X PUT "$base/v1/objects" -H @"$hdr" --data-binary @"$FILE" -o "$out"
 # read url + preview_url from "$out" only
-rm -f "$hdr" "$out"
+rm -f "$hdr" "$out"; trap - EXIT
 ```
 
 Optional `repo` / `pr` metadata per Worker/CLI contract. Success only when the

@@ -7,13 +7,13 @@ Push to `main` → `.github/workflows/main.yml` → GitHub Environment `producti
 
 ## CD environment (`production`)
 
-| Name                        | Kind   | Purpose                                 |
-| --------------------------- | ------ | --------------------------------------- |
-| `CLOUDFLARE_API_TOKEN`      | secret | Workers / R2 / D1                       |
-| `CLOUDFLARE_ACCOUNT_ID`     | var    | Cloudflare account                      |
-| `CLOUDFLARE_D1_DATABASE_ID` | var    | D1 database id                          |
-| `ALLOWED_GITHUB_USER_IDS`   | var    | Comma-separated numeric GitHub user ids |
-| `ATTACH_PUBLIC_BASE`        | var    | Public origin for returned object URLs  |
+| Name                        | Kind   | Purpose                                  |
+| --------------------------- | ------ | ---------------------------------------- |
+| `CLOUDFLARE_API_TOKEN`      | secret | Workers / R2 / D1                        |
+| `CLOUDFLARE_ACCOUNT_ID`     | var    | Cloudflare account                       |
+| `CLOUDFLARE_D1_DATABASE_ID` | var    | D1 database id                           |
+| `ALLOWED_GITHUB_USER_IDS`   | var    | Comma-separated numeric GitHub user ids  |
+| `ATTACH_PUBLIC_BASE`        | var    | Public origin for URLs + agent JWT `aud` |
 
 `deploy.ts` fails closed if any are missing. It writes gitignored
 `wrangler.deploy.toml`, applies migrations, then `wrangler deploy --var` for
@@ -92,3 +92,8 @@ attach put ./shot.png --repo owner/repo --pr 1
 Agent JWT enroll: `iss=attach:<app_id>`, `aud` = host of `ATTACH_PUBLIC_BASE`,
 `exp` ≤ `iat + 120`, one-time `jti` → `POST /v1/enroll/agent` → use returned
 `att_` key for `PUT /v1/objects`.
+
+If `ATTACH_PUBLIC_BASE` is unset, agent enroll falls back to the published
+default host (`attach.uinaf.dev`) for `aud` only — set the var for any
+self-hosted hostname. Invalid values fail enroll with
+`attach_public_base_invalid`.

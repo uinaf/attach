@@ -7,11 +7,13 @@ function mockState(initial?: Map<string, number>) {
   let hydrate: Promise<unknown> = Promise.resolve();
   const storage = {
     async get<T>(key: string) {
-      if (key === "claimed") return claimed as T | undefined;
+      if (key === "claimed") {
+        return (claimed ? new Map(claimed) : undefined) as T | undefined;
+      }
       return undefined;
     },
     async put(key: string, value: unknown) {
-      if (key === "claimed") claimed = value as Map<string, number>;
+      if (key === "claimed") claimed = new Map(value as Map<string, number>);
     },
     async setAlarm() {},
   };
@@ -66,5 +68,15 @@ describe("JtiStore", () => {
     );
     expect(res.status).toBe(200);
     expect(state.claimed?.get("old")).toBe(now + JTI_RETENTION_MS);
+
+    const restarted = new JtiStore(state as unknown as DurableObjectState);
+    await state.awaitHydrate();
+    const replay = await restarted.fetch(
+      new Request("https://jti/claim", {
+        method: "POST",
+        body: JSON.stringify({ jti: "old", now: now + 1 }),
+      }),
+    );
+    expect(replay.status).toBe(409);
   });
 });
