@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 const apiRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const tomlPath = join(apiRoot, "wrangler.toml");
 const generatedPath = join(apiRoot, "wrangler.deploy.toml");
+const wranglerJs = join(apiRoot, "node_modules", "wrangler", "bin", "wrangler.js");
 
 function requireEnv(name) {
   const value = process.env[name]?.trim();
@@ -29,7 +30,7 @@ if (patched === toml || !patched.includes(`database_id = "${databaseId}"`)) {
 writeFileSync(generatedPath, patched);
 
 function run(args) {
-  const result = spawnSync("pnpm", ["exec", "wrangler", ...args], {
+  const result = spawnSync(process.execPath, [wranglerJs, ...args], {
     cwd: apiRoot,
     stdio: "inherit",
     env: process.env,
