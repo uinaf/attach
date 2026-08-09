@@ -4,8 +4,7 @@ import { apiBase, clearCredentials, loadCredentials, saveCredentials } from "./c
 import { loginWithDeviceFlow } from "./device-flow.ts";
 import { formatPutOutput, type PutOutputMode } from "./put-output.ts";
 
-function usage(): never {
-  console.error(`Usage:
+const usageText = `Usage:
   attach login
   attach put <file> [--repo owner/name] [--pr N] [--json|--markdown|--url]
                          (default prints preview URL; --markdown embeds raw /o URL)
@@ -16,7 +15,10 @@ Environment:
   ATTACH_API_BASE            default https://attach.uinaf.dev
   ATTACH_GITHUB_CLIENT_ID    Attach GitHub App client id (required for login)
 
-Also installable as a gh extension (gh attach ...). Does not touch gh auth.`);
+Also installable as a gh extension (gh attach ...). Does not touch gh auth.`;
+
+function usage(): never {
+  console.error(usageText);
   process.exit(2);
 }
 
@@ -186,7 +188,7 @@ async function main(): Promise<void> {
       case "help":
       case "--help":
       case "-h":
-        usage();
+        console.log(usageText);
         break;
       default:
         usage();
