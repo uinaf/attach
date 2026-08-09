@@ -16,6 +16,15 @@ type TokenResponse = {
   interval?: number;
 };
 
+export function deviceAuthorizationPrompt(uri: string, userCode: string): string[] {
+  return [
+    `Authorize Attach at: ${uri}`,
+    `Device code: ${userCode}`,
+    "Relay this short-lived code to the intended user completing authorization.",
+    "Do not post it to logs, issues, or other public channels.",
+  ];
+}
+
 export async function loginWithDeviceFlow(
   onPrompt: (uri: string, userCode: string) => void,
 ): Promise<string> {

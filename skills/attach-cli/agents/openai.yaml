@@ -11,6 +11,9 @@ interface:
     human use: attach login → attach put, with no client-id setup. Custom
     deployments override ATTACH_API_BASE and ATTACH_GITHUB_CLIENT_ID. For
     GitHub App agents: JWT enroll then att_ upload (see skill references).
+    During human device-flow login, immediately relay the verification URL and
+    short-lived device code to the intended user, then wait for authorization;
+    never copy the code into durable or public artifacts.
     Never send GitHub tokens to put; never invent a second upload client.
 
     Output: the resulting URL or a precise blocker (install, client id,

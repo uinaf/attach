@@ -9,7 +9,7 @@ import {
 } from "./cli-contract.ts";
 import { CliError, normalizeCliError } from "./cli-errors.ts";
 import { apiBase, clearCredentials, loadCredentials, saveCredentials } from "./config.ts";
-import { loginWithDeviceFlow } from "./device-flow.ts";
+import { deviceAuthorizationPrompt, loginWithDeviceFlow } from "./device-flow.ts";
 import { attachOrigin, parseObjectRefSyntax, requireMatchingOrigin } from "./object-ref.ts";
 import { formatPutOutput } from "./put-output.ts";
 
@@ -30,7 +30,7 @@ async function enrollHuman(githubToken: string): Promise<EnrollResponse> {
 
 async function cmdLogin(command: Extract<ParsedCommand, { name: "login" }>): Promise<void> {
   const githubToken = await loginWithDeviceFlow((uri, userCode) => {
-    console.error(`Open ${uri} and enter code: ${userCode}`);
+    for (const line of deviceAuthorizationPrompt(uri, userCode)) console.error(line);
     console.error("(This uses the Attach GitHub App device flow; gh auth is not modified.)");
   });
 

@@ -30,6 +30,9 @@ is `att_` keys only — never GitHub tokens.
 The hosted `https://attach.uinaf.dev` service uses the bundled public client id
 for the uinaf Attach GitHub App. Self-hosted deployments set both
 `ATTACH_API_BASE` and `ATTACH_GITHUB_CLIENT_ID` for their own App.
+On headless hosts, relay the verification URL and short-lived device code from
+`attach login` to the intended user, then leave the process running while they
+authorize. Do not copy the code into logs, issues, commits, or PRs.
 
 ## Docs
 

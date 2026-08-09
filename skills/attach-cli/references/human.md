@@ -34,7 +34,10 @@ attach help [--json]
 ```
 
 - **login** — GitHub App device flow for the Attach App. Does not read or write
-  `gh auth` tokens. Mints an `att_` key via `POST /v1/enroll/human`.
+  `gh auth` tokens. Mints an `att_` key via `POST /v1/enroll/human`. On a
+  headless host, immediately relay the emitted verification URL and short-lived
+  device code to the intended user, then keep the process running while they
+  authorize. Never copy the code into logs, issues, commits, or PRs.
 - **put** — uploads with stored `att_`. Default stdout is the **preview** URL
   (`/p/…`). `--markdown` embeds the **raw** object URL (`/o/…`). `--url`
   prints raw URL only; `--json` prints the API body.
@@ -51,7 +54,9 @@ attach help [--json]
 - Parsing is strict: unknown flags, extra positionals, missing values, invalid
   `owner/name` / PR metadata, and conflicting output modes exit 2.
 - `--json` returns machine-readable command results and structured errors with
-  nonzero exit status. Login device-flow instructions remain on stderr.
+  nonzero exit status. Login device-flow instructions remain on stderr; relay
+  their verification URL and code to the intended user instead of treating the
+  code as a credential that cannot cross the headless boundary.
 - `put --dry-run` reads and validates the local file, reports detected type,
   size, metadata, output mode, and target origin, but does not read credentials
   or call the Worker.
