@@ -2,6 +2,9 @@ import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync }
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { ATTACH_API_BASE_DEFAULT } from "@uinaf/attach-shared";
+import { CliError } from "./cli-errors.ts";
+
+export const ATTACH_GITHUB_CLIENT_ID_DEFAULT = "Iv23liUOpX2INg4GLufi";
 
 export type Credentials = {
   token: string;
@@ -16,13 +19,21 @@ export function apiBase(): string {
 }
 
 export function clientId(): string {
-  const id = process.env.ATTACH_GITHUB_CLIENT_ID;
-  if (!id) {
-    throw new Error(
-      "ATTACH_GITHUB_CLIENT_ID is required (Attach GitHub App client id). See docs/deploy.md",
-    );
+  const override = process.env.ATTACH_GITHUB_CLIENT_ID;
+  if (override) return override;
+  if (normalizeApiBase(apiBase()) === normalizeApiBase(ATTACH_API_BASE_DEFAULT)) {
+    return ATTACH_GITHUB_CLIENT_ID_DEFAULT;
   }
-  return id;
+  throw new CliError(
+    "GITHUB_CLIENT_ID_REQUIRED",
+    "ATTACH_GITHUB_CLIENT_ID is required for a custom ATTACH_API_BASE. See docs/deploy.md",
+  );
+}
+
+function normalizeApiBase(value: string): string {
+  const url = new URL(value);
+  url.pathname = url.pathname.replace(/\/+$/, "") || "/";
+  return url.toString();
 }
 
 function configDir(): string {

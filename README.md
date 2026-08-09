@@ -19,9 +19,6 @@ brew install uinaf/tap/attach
 ## Usage
 
 ```bash
-export ATTACH_GITHUB_CLIENT_ID=...   # your Attach GitHub App client id
-# optional: export ATTACH_API_BASE=https://your.attach.host
-
 attach login
 attach put ./shot.png --repo owner/repo --pr 12
 attach delete <url-or-key>
@@ -29,6 +26,10 @@ attach delete <url-or-key>
 
 `put` prints a `/p/…` preview URL (`--markdown` embeds raw `/o/…`). Upload auth
 is `att_` keys only — never GitHub tokens.
+
+The hosted `https://attach.uinaf.dev` service uses the bundled public client id
+for the uinaf Attach GitHub App. Self-hosted deployments set both
+`ATTACH_API_BASE` and `ATTACH_GITHUB_CLIENT_ID` for their own App.
 
 ## Docs
 

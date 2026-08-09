@@ -1,6 +1,6 @@
 ---
 name: attach-cli
-description: "Uploads PR and validation media to a self-hosted attach Worker via the installed attach CLI (`attach` or `gh attach`): device-flow login with ATTACH_GITHUB_CLIENT_ID, put/delete/logout of screenshots and artifacts, preview `/p/…` URLs, raw `/o/…` embeds via `--markdown`, and `--json`/`--url` output; or GitHub App JWT enroll then `att_` PUT for agents. Use when the user asks to attach a screenshot, upload PR media, put an image on attach.uinaf.dev (or ATTACH_API_BASE), share a validation screenshot URL, run attach login/put/delete/logout, use gh attach, host validation media, take down attach media, or enroll an App agent for attach. Do not use for Worker deploy, vault, Cloudflare ops, or inventing a second upload client."
+description: "Uploads PR and validation media to a self-hosted attach Worker via the installed attach CLI (`attach` or `gh attach`): zero-config hosted device-flow login with an ATTACH_GITHUB_CLIENT_ID override for custom deployments, put/delete/logout of screenshots and artifacts, preview `/p/…` URLs, raw `/o/…` embeds via `--markdown`, and `--json`/`--url` output; or GitHub App JWT enroll then `att_` PUT for agents. Use when the user asks to attach a screenshot, upload PR media, put an image on attach.uinaf.dev (or ATTACH_API_BASE), share a validation screenshot URL, run attach login/put/delete/logout, use gh attach, host validation media, take down attach media, or enroll an App agent for attach. Do not use for Worker deploy, vault, Cloudflare ops, or inventing a second upload client."
 ---
 
 # attach-cli
@@ -25,15 +25,22 @@ scripts. Treat `gh attach …` as the same binary; never modify `gh auth`.
 
 Details: [references/human.md](references/human.md).
 
-`ATTACH_GITHUB_CLIENT_ID` is the Attach GitHub App **client id** (operator /
-GitHub App settings) — if unset, stop and ask. Optional `ATTACH_API_BASE`
-(default `https://attach.uinaf.dev`).
+The hosted `https://attach.uinaf.dev` service has its public GitHub App client
+id bundled, so `attach login` needs no environment setup. For a custom
+`ATTACH_API_BASE`, require the deployment's own `ATTACH_GITHUB_CLIENT_ID`
+(GitHub App settings); stop and ask only when that custom override is missing.
 
 1. `attach login`
 2. `attach put <file> [--repo owner/name] [--pr N]` — default preview `/p/…`;
-   `--markdown` for raw `/o/…`; `--json` / `--url` as needed
+   `--url` for raw `/o/…`, `--markdown` for an embed, `--json` for the API body;
+   add `--dry-run` to validate locally without credentials or a network request
 3. `attach delete <url-or-key>` then `curl -sI <url>` → 404/410 before success
 4. `attach logout` when done with credentials
+
+Use `attach help --json` for the machine-readable command contract. Add
+`--json` to commands when structured results and errors are required. Use
+`attach delete <url-or-key> --dry-run` to validate and normalize a delete
+target before acting.
 
 On allowlist rejection or login failure: report the blocker and stop.
 
@@ -56,5 +63,6 @@ JWT claims, header-file HTTP, and secret handling:
 - Never print App PEMs, device codes, or `att_` values (including enroll JSON)
 - Prefer preview URLs; `--markdown` / raw `url` only when the consumer needs embeds
 
-Stop when put returned URLs, delete verified gone, or blocked on install / client
-id / allowlist / registry / auth — reply with the URL or precise blocker only.
+Stop when put returned URLs, delete verified gone, or blocked on install /
+custom client id / allowlist / registry / auth — reply with the URL or precise
+blocker only.

@@ -1,7 +1,7 @@
 import { basename } from "node:path";
 import type { PutResponse } from "@uinaf/attach-shared";
 
-export type PutOutputMode = "url" | "markdown" | "json";
+export type PutOutputMode = "preview" | "url" | "markdown" | "json";
 
 /** Format put API response for CLI stdout. Default shares preview; markdown embeds raw. */
 export function formatPutOutput(body: PutResponse, mode: PutOutputMode, filePath: string): string {
@@ -14,5 +14,6 @@ export function formatPutOutput(body: PutResponse, mode: PutOutputMode, filePath
     }
     return `[${basename(filePath)}](${body.url})`;
   }
+  if (mode === "url") return body.url;
   return body.preview_url;
 }

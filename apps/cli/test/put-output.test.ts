@@ -14,7 +14,11 @@ const sample: PutResponse = {
 
 describe("put output", () => {
   it("defaults to preview url for sharing", () => {
-    expect(formatPutOutput(sample, "url", "shot.png")).toBe(sample.preview_url);
+    expect(formatPutOutput(sample, "preview", "shot.png")).toBe(sample.preview_url);
+  });
+
+  it("prints the raw object url when requested", () => {
+    expect(formatPutOutput(sample, "url", "shot.png")).toBe(sample.url);
   });
 
   it("markdown embeds the raw object url", () => {

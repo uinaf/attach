@@ -1,4 +1,5 @@
 import { clientId } from "./config.ts";
+import { CliError } from "./cli-errors.ts";
 
 type DeviceCode = {
   device_code: string;
@@ -31,7 +32,10 @@ export async function loginWithDeviceFlow(
     }),
   });
   if (!codeRes.ok) {
-    throw new Error(`device code request failed: ${codeRes.status}`);
+    throw new CliError(
+      "DEVICE_CODE_REQUEST_FAILED",
+      `GitHub device code request failed: ${codeRes.status}`,
+    );
   }
   const code = (await codeRes.json()) as DeviceCode;
   onPrompt(code.verification_uri, code.user_code);
@@ -60,9 +64,15 @@ export async function loginWithDeviceFlow(
       intervalMs += 5_000;
       continue;
     }
-    throw new Error(body.error_description ?? body.error ?? "device_flow_failed");
+    if (body.error === "access_denied") {
+      throw new CliError("DEVICE_FLOW_DENIED", "GitHub device authorization was denied");
+    }
+    if (body.error === "expired_token") {
+      throw new CliError("DEVICE_FLOW_EXPIRED", "GitHub device authorization expired");
+    }
+    throw new CliError("DEVICE_FLOW_FAILED", "GitHub device authorization failed");
   }
-  throw new Error("device_flow_expired");
+  throw new CliError("DEVICE_FLOW_EXPIRED", "GitHub device authorization expired");
 }
 
 function sleep(ms: number): Promise<void> {
