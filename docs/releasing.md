@@ -1,9 +1,9 @@
 # Releasing
 
-| Workflow                        | On push to `main`                                                               |
-| ------------------------------- | ------------------------------------------------------------------------------- |
-| `.github/workflows/main.yml`    | verify → secrets → Worker deploy (`production`)                                 |
-| `.github/workflows/release.yml` | verify → secrets → npm `@uinaf/attach-cli` (`release`, OIDC + `uinaf-releaser`) |
+| Workflow                        | On push to `main`                                                                   |
+| ------------------------------- | ----------------------------------------------------------------------------------- |
+| `.github/workflows/main.yml`    | verify → secret scan → Worker deploy (`production`)                                 |
+| `.github/workflows/release.yml` | verify → secret scan → npm `@uinaf/attach-cli` (`release`, OIDC + `uinaf-releaser`) |
 
 Worker deploy stays independent of npm. Do not make deploy `needs: [release]`.
 

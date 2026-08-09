@@ -45,7 +45,8 @@ Local secrets stay in gitignored `.dev.vars` (see `.dev.vars.example`).
    `CLOUDFLARE_D1_DATABASE_ID` (GH env var for CD). Configure the required R2
    lifecycle below before the first CD run.
 2. Create a **per-deploy** GitHub App (device flow, `read:user`, no
-   Contents:write). `wrangler secret put` the App client id/secret.
+   Contents:write). Set `GITHUB_APP_CLIENT_ID` and `GITHUB_APP_CLIENT_SECRET`
+   with the repo-scoped Wrangler command shown under [Runtime secrets](#runtime-secrets).
 3. Bind the public hostname to the Worker after the first successful CD.
    Production disables the public `workers.dev` route.
 4. Optionally set `AGENT_REGISTRY` (JSON App public keys) as a Worker secret.
@@ -54,9 +55,17 @@ Local secrets stay in gitignored `.dev.vars` (see `.dev.vars.example`).
 
 ### R2 lifecycle (required for TTL)
 
-In the Cloudflare dashboard (or API) for the attach R2 bucket, add a lifecycle
-rule that deletes objects **after** the application TTL with slack — recommend
-**760 days after upload** (not 730). A threshold equal to or tighter than
+For the `attach` EU bucket, add an all-prefix
+[Cloudflare R2 object lifecycle rule](https://developers.cloudflare.com/r2/buckets/object-lifecycles/)
+that deletes objects **760 days after upload**:
+
+```bash
+pnpm --filter @uinaf/attach-api exec wrangler r2 bucket lifecycle add \
+  attach attach-object-ttl "" --expire-days 760 --jurisdiction eu
+```
+
+The Cloudflare dashboard supports the same configuration under the bucket's
+Settings → Object Lifecycle Rules. A threshold equal to or tighter than
 `OBJECT_TTL_MS` (~2 years / leap-day skew) can remove still-live objects.
 
 Verify before enabling on production:
@@ -79,7 +88,16 @@ export ATTACH_GITHUB_CLIENT_ID=...
 attach login
 ```
 
-## Agent registry
+## Runtime secrets
+
+Set required secrets from the repository root:
+
+```bash
+pnpm --filter @uinaf/attach-api exec wrangler secret put GITHUB_APP_CLIENT_ID
+pnpm --filter @uinaf/attach-api exec wrangler secret put GITHUB_APP_CLIENT_SECRET
+```
+
+### Agent registry
 
 ```json
 [
@@ -92,7 +110,7 @@ attach login
 ```
 
 ```bash
-wrangler secret put AGENT_REGISTRY
+pnpm --filter @uinaf/attach-api exec wrangler secret put AGENT_REGISTRY
 ```
 
 Disable an agent by updating the secret and revoking or disabling that

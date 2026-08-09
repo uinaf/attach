@@ -19,10 +19,12 @@ Node (see `.node-version`) with Corepack enabled:
 
 API Worker tests: Node characterization via vite-plus, plus
 `@cloudflare/vitest-pool-workers` (`pnpm --filter @uinaf/attach-api test:workers`).
-After `wrangler.toml` binding changes: `pnpm --filter @uinaf/attach-api types` and commit
-`apps/api/worker-configuration.d.ts` (Env bindings only). Verify runs `types:check`.
+After `wrangler.toml` binding changes:
+`pnpm --filter @uinaf/attach-api types`, then commit
+`apps/api/worker-configuration.d.ts` (Env bindings only). Verify runs
+`types:check`.
 
-## Pull requests
+## Pull request expectations
 
 Use squash merge. Keep PRs focused; fill out the PR template.
 

@@ -32,7 +32,15 @@ is `att_` keys only — never GitHub tokens.
 ## Docs
 
 - [Auth contract](docs/adr-001-auth-and-principals.md)
-- [Deploy (CD + bootstrap)](docs/deploy.md)
-- [Releasing](docs/releasing.md)
+- [Deployment and bootstrap](docs/deploy.md)
+- [Release workflow](docs/releasing.md)
 - [attach-cli skill](skills/attach-cli/SKILL.md) — agent skill for CLI / `gh attach`
-- [Contributing](CONTRIBUTING.md)
+
+## Contributing
+
+See [Contributing](CONTRIBUTING.md) for setup, validation, and pull request
+expectations.
+
+## License
+
+[MIT](LICENSE)
