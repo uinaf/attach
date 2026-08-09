@@ -95,57 +95,73 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.release-bot.outputs.token }}
         run: gh auth setup-git
-      - name: Resolve release bot identity
-        id: release-bot-identity
-        shell: bash
-        env:
-          GH_TOKEN: ${{ steps.release-bot.outputs.token }}
-          APP_SLUG: ${{ steps.release-bot.outputs.app-slug }}
-        run: |
-          set -euo pipefail
-          user_id="$(gh api "/users/${APP_SLUG}%5Bbot%5D" --jq .id)"
-          if [[ ! "$user_id" =~ ^[0-9]+$ ]]; then
-            echo "failed to resolve numeric bot user id for ${APP_SLUG}[bot]" >&2
-            exit 1
-          fi
-          echo "user-id=${user_id}" >> "$GITHUB_OUTPUT"
       - id: semantic
         uses: cycjimmy/semantic-release-action@b12c8f6015dc215fe37bc154d4ad456dd3833c90 # v6.0.0
         with:
+          semantic_version: 25.0.3
           extra_plugins: |
             @semantic-release/commit-analyzer@13.0.1
             @semantic-release/release-notes-generator@14.1.1
             @semantic-release/npm@13.1.5
-            @semantic-release/git@10.0.1
+            @jno21/semantic-release-github-commit@1.0.1
             @semantic-release/github@12.0.8
             conventional-changelog-conventionalcommits@9.3.1
         env:
           GITHUB_TOKEN: ${{ steps.release-bot.outputs.token }}
           GH_TOKEN: ${{ steps.release-bot.outputs.token }}
-          GIT_AUTHOR_NAME: ${{ steps.release-bot.outputs.app-slug }}[bot]
-          GIT_AUTHOR_EMAIL: ${{ steps.release-bot-identity.outputs.user-id }}+${{ steps.release-bot.outputs.app-slug }}[bot]@users.noreply.github.com
-          GIT_COMMITTER_NAME: ${{ steps.release-bot.outputs.app-slug }}[bot]
-          GIT_COMMITTER_EMAIL: ${{ steps.release-bot-identity.outputs.user-id }}+${{ steps.release-bot.outputs.app-slug }}[bot]@users.noreply.github.com
 
-      - name: Update Homebrew tap
-        if: steps.semantic.outputs.new_release_published == 'true'
+      - name: Resolve release target
+        id: release-target
         env:
           GH_TOKEN: ${{ steps.release-bot.outputs.token }}
-          RELEASE_VERSION: ${{ steps.semantic.outputs.new_release_version }}
-          RELEASE_BOT_NAME: ${{ steps.release-bot.outputs.app-slug }}[bot]
-          RELEASE_BOT_EMAIL: ${{ steps.release-bot-identity.outputs.user-id }}+${{ steps.release-bot.outputs.app-slug }}[bot]@users.noreply.github.com
+          NEW_RELEASE_TAG: ${{ steps.semantic.outputs.new_release_git_tag }}
         run: |
           set -euo pipefail
-          update_root="$(mktemp -d)"
-          trap 'rm -rf "$update_root"' EXIT
-          tap_root="$update_root/homebrew-tap"
-          formula="$tap_root/Formula/attach.rb"
+          tag="$NEW_RELEASE_TAG"
+          if [[ -z "$tag" ]]; then
+            tag="$(gh release view --json tagName --jq .tagName 2>/dev/null || true)"
+          fi
+          if [[ -z "$tag" ]]; then
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [[ ! "$tag" =~ ^cli-v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "unsupported release tag: $tag" >&2
+            exit 1
+          fi
+          {
+            echo "present=true"
+            echo "tag=$tag"
+            echo "version=${tag#cli-v}"
+          } >> "$GITHUB_OUTPUT"
 
-          gh auth setup-git
-          git clone --depth 1 https://github.com/uinaf/homebrew-tap.git "$tap_root"
+      - name: Verify immutable release
+        if: steps.release-target.outputs.present == 'true'
+        env:
+          GH_TOKEN: ${{ steps.release-bot.outputs.token }}
+          RELEASE_TAG: ${{ steps.release-target.outputs.tag }}
+        run: |
+          test "$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" --jq .immutable)" = true
 
+      - name: Check out Homebrew tap
+        if: steps.release-target.outputs.present == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: uinaf/homebrew-tap
+          token: ${{ steps.release-bot.outputs.token }}
+          path: homebrew-tap
+          persist-credentials: false
+          ref: main
+
+      - name: Prepare Homebrew formula
+        if: steps.release-target.outputs.present == 'true'
+        env:
+          GH_TOKEN: ${{ steps.release-bot.outputs.token }}
+          RELEASE_VERSION: ${{ steps.release-target.outputs.version }}
+        run: |
+          set -euo pipefail
           for attempt in {1..12}; do
-            if node apps/cli/scripts/homebrew.ts "$RELEASE_VERSION" "$formula"; then
+            if node apps/cli/scripts/homebrew.ts "$RELEASE_VERSION" homebrew-tap/Formula/attach.rb; then
               break
             fi
             if [[ "$attempt" -eq 12 ]]; then
@@ -155,13 +171,16 @@ jobs:
             sleep 5
           done
 
-          git -C "$tap_root" diff --check
-          git -C "$tap_root" add Formula/attach.rb
-          if git -C "$tap_root" diff --cached --quiet; then
-            echo "Homebrew formula already matches release $RELEASE_VERSION"
-            exit 0
-          fi
-          git -C "$tap_root" config user.name "$RELEASE_BOT_NAME"
-          git -C "$tap_root" config user.email "$RELEASE_BOT_EMAIL"
-          git -C "$tap_root" commit -m "chore(attach): update to $RELEASE_VERSION"
-          git -C "$tap_root" push origin main
+          git -C homebrew-tap diff --check
+
+      - name: Commit Homebrew formula
+        if: steps.release-target.outputs.present == 'true'
+        uses: planetscale/ghcommit-action@a6b150b81dca5dd027baa898604418eec9e11465 # v0.2.22
+        with:
+          commit_message: "chore(attach): update to ${{ steps.release-target.outputs.version }}"
+          repo: uinaf/homebrew-tap
+          branch: main
+          file_pattern: Formula/attach.rb
+          repository: homebrew-tap
+        env:
+          GITHUB_TOKEN: ${{ steps.release-bot.outputs.token }}

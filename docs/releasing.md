@@ -23,6 +23,11 @@ Publishes from `release.yml` via npm Trusted Publishing (OIDC). The CLI pack
 Tags: `cli-v${version}`. Trusted publisher: workflow `release.yml`, environment
 `release`.
 
+During semantic-release prepare, the released `apps/cli/package.json` is
+committed to `main` through GitHub's API as `uinaf-releaser[bot]`. GitHub signs
+that commit before semantic-release creates the tag, so the tag, immutable
+GitHub Release, and npm package refer to the checked-in released version.
+
 Install:
 
 ```sh
@@ -36,8 +41,12 @@ brew install uinaf/tap/attach
 [`uinaf/homebrew-tap`](https://github.com/uinaf/homebrew-tap) publishes the
 `attach` formula from the exact npm release tarball. After semantic-release
 publishes a new CLI version, `release.yml` downloads that version, calculates
-its SHA-256 digest, renders `Formula/attach.rb`, and pushes the formula update
-with the scoped `uinaf-releaser` token. The tap update is idempotent on rerun.
+its SHA-256 digest, renders `Formula/attach.rb`, and commits the formula through
+GitHub's signed App commit API. The tap update is idempotent on rerun.
+
+If npm/GitHub publication succeeds but the Homebrew update fails, rerun the
+failed release job. It resolves the latest immutable `cli-v*` release and
+retries the idempotent formula update without publishing another version.
 
 ## Worker
 
