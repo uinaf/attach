@@ -44,6 +44,10 @@ publishes a new CLI version, `release.yml` downloads that version, calculates
 its SHA-256 digest, renders `Formula/attach.rb`, and commits the formula through
 GitHub's signed App commit API. The tap update is idempotent on rerun.
 
+If npm/GitHub publication succeeds but the Homebrew update fails, rerun the
+failed release job. It resolves the latest immutable `cli-v*` release and
+retries the idempotent formula update without publishing another version.
+
 ## Worker
 
 Push to `main` → GitHub Environment `production` → wrangler (see [Deploy](deploy.md)).
