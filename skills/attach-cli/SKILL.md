@@ -16,7 +16,8 @@ attach --help 2>/dev/null || gh attach --help 2>/dev/null || true
 ```
 
 If `attach` is missing, stop and ask the user to install via their approved
-path (`npm i -g @uinaf/attach-cli` or `gh extension install uinaf/gh-attach`).
+path (`brew install uinaf/tap/attach`, `npm i -g @uinaf/attach-cli`, or
+`gh extension install uinaf/gh-attach`).
 Do not download installers from this skill. Do not invent curl/fetch upload
 scripts. Treat `gh attach …` as the same binary; never modify `gh auth`.
 

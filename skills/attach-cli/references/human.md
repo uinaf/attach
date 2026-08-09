@@ -3,8 +3,9 @@
 ## Install (user-approved only)
 
 ```bash
-npm i -g @uinaf/attach-cli
-# or
+brew install uinaf/tap/attach
+# or: npm i -g @uinaf/attach-cli
+# or:
 gh extension install uinaf/gh-attach
 ```
 

@@ -87,7 +87,9 @@ jobs:
           client-id: ${{ vars.UINAF_RELEASE_APP_CLIENT_ID }}
           private-key: ${{ secrets.UINAF_RELEASE_APP_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
-          repositories: ${{ github.event.repository.name }}
+          repositories: |
+            attach
+            homebrew-tap
           permission-contents: write
       - name: Authorize release writes
         env:
@@ -107,7 +109,8 @@ jobs:
             exit 1
           fi
           echo "user-id=${user_id}" >> "$GITHUB_OUTPUT"
-      - uses: cycjimmy/semantic-release-action@b12c8f6015dc215fe37bc154d4ad456dd3833c90 # v6.0.0
+      - id: semantic
+        uses: cycjimmy/semantic-release-action@b12c8f6015dc215fe37bc154d4ad456dd3833c90 # v6.0.0
         with:
           extra_plugins: |
             @semantic-release/commit-analyzer@13.0.1
@@ -123,3 +126,42 @@ jobs:
           GIT_AUTHOR_EMAIL: ${{ steps.release-bot-identity.outputs.user-id }}+${{ steps.release-bot.outputs.app-slug }}[bot]@users.noreply.github.com
           GIT_COMMITTER_NAME: ${{ steps.release-bot.outputs.app-slug }}[bot]
           GIT_COMMITTER_EMAIL: ${{ steps.release-bot-identity.outputs.user-id }}+${{ steps.release-bot.outputs.app-slug }}[bot]@users.noreply.github.com
+
+      - name: Update Homebrew tap
+        if: steps.semantic.outputs.new_release_published == 'true'
+        env:
+          GH_TOKEN: ${{ steps.release-bot.outputs.token }}
+          RELEASE_VERSION: ${{ steps.semantic.outputs.new_release_version }}
+          RELEASE_BOT_NAME: ${{ steps.release-bot.outputs.app-slug }}[bot]
+          RELEASE_BOT_EMAIL: ${{ steps.release-bot-identity.outputs.user-id }}+${{ steps.release-bot.outputs.app-slug }}[bot]@users.noreply.github.com
+        run: |
+          set -euo pipefail
+          update_root="$(mktemp -d)"
+          trap 'rm -rf "$update_root"' EXIT
+          tap_root="$update_root/homebrew-tap"
+          formula="$tap_root/Formula/attach.rb"
+
+          gh auth setup-git
+          git clone --depth 1 https://github.com/uinaf/homebrew-tap.git "$tap_root"
+
+          for attempt in {1..12}; do
+            if node apps/cli/scripts/homebrew.ts "$RELEASE_VERSION" "$formula"; then
+              break
+            fi
+            if [[ "$attempt" -eq 12 ]]; then
+              echo "npm tarball did not become available" >&2
+              exit 1
+            fi
+            sleep 5
+          done
+
+          git -C "$tap_root" diff --check
+          git -C "$tap_root" add Formula/attach.rb
+          if git -C "$tap_root" diff --cached --quiet; then
+            echo "Homebrew formula already matches release $RELEASE_VERSION"
+            exit 0
+          fi
+          git -C "$tap_root" config user.name "$RELEASE_BOT_NAME"
+          git -C "$tap_root" config user.email "$RELEASE_BOT_EMAIL"
+          git -C "$tap_root" commit -m "chore(attach): update to $RELEASE_VERSION"
+          git -C "$tap_root" push origin main

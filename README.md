@@ -11,7 +11,8 @@ Hosted demo: [attach.uinaf.dev](https://attach.uinaf.dev)
 ## Install
 
 ```bash
-npm i -g @uinaf/attach-cli
+brew install uinaf/tap/attach
+# or: npm i -g @uinaf/attach-cli
 # or: gh extension install uinaf/gh-attach
 ```
 

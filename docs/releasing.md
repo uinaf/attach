@@ -1,9 +1,9 @@
 # Releasing
 
-| Workflow                        | On push to `main`                                                                   |
-| ------------------------------- | ----------------------------------------------------------------------------------- |
-| `.github/workflows/main.yml`    | verify → secret scan → Worker deploy (`production`)                                 |
-| `.github/workflows/release.yml` | verify → secret scan → npm `@uinaf/attach-cli` (`release`, OIDC + `uinaf-releaser`) |
+| Workflow                        | On push to `main`                                                          |
+| ------------------------------- | -------------------------------------------------------------------------- |
+| `.github/workflows/main.yml`    | verify → secret scan → Worker deploy (`production`)                        |
+| `.github/workflows/release.yml` | verify → secret scan → npm + Homebrew (`release`, OIDC + `uinaf-releaser`) |
 
 Worker deploy stays independent of npm. Do not make deploy `needs: [release]`.
 
@@ -26,9 +26,18 @@ Tags: `cli-v${version}`. Trusted publisher: workflow `release.yml`, environment
 Install:
 
 ```sh
-npm i -g @uinaf/attach-cli
+brew install uinaf/tap/attach
+# or: npm i -g @uinaf/attach-cli
 # or: gh extension install uinaf/gh-attach
 ```
+
+## Homebrew
+
+[`uinaf/homebrew-tap`](https://github.com/uinaf/homebrew-tap) publishes the
+`attach` formula from the exact npm release tarball. After semantic-release
+publishes a new CLI version, `release.yml` downloads that version, calculates
+its SHA-256 digest, renders `Formula/attach.rb`, and pushes the formula update
+with the scoped `uinaf-releaser` token. The tap update is idempotent on rerun.
 
 ## Worker
 
