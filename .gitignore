@@ -35,6 +35,6 @@ coverage/
 *.sln
 *.sw?
 
-# AI agent worktrees
-.claude/worktrees/
+# AI agent worktrees and local harness config, both provisioned per machine
+.claude/
 .cursor/
