@@ -214,6 +214,9 @@ catalogs:
     '@types/node':
       specifier: ^24
       version: 24.13.3
+    '@uinaf/design':
+      specifier: ^1.13.5
+      version: 1.13.5
     typescript:
       specifier: ^7.0.2
       version: 7.0.2
@@ -257,6 +260,9 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 24.13.3
+      '@uinaf/design':
+        specifier: 'catalog:'
+        version: 1.13.5
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
@@ -294,8 +300,8 @@ importers:
   apps/web:
     dependencies:
       '@uinaf/design':
-        specifier: ^0.1.0
-        version: 0.1.0
+        specifier: ^1.13.5
+        version: 1.13.5
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
@@ -1185,9 +1191,10 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@uinaf/design@0.1.0':
-    resolution: {integrity: sha512-6mmHKM8s5VST6VpwSWCZhi/xZ15esacHZZexOLour1nLgs5NZEnS7bOcWkzvK0sVMTI3RSf4cRm52mhbSVxfRw==}
+  '@uinaf/design@1.13.5':
+    resolution: {integrity: sha512-gZdX9InDDWGhMtoMgpflpHt2yPAG69gf2dMPjbPBhjtC/SFfKJ+IsXyuCGXUzEZqdQXSgzWVCF52xGjubfjQJQ==}
     engines: {node: '>=24.18.0'}
+    hasBin: true
 
   '@vitest/browser-preview@4.1.10':
     resolution: {integrity: sha512-14MJrL59ZFkqXLjwfSk6RzTDy5Czf9UG4+8q8L6Gxjs2aPjEce/cVNYV14bXAc2BvMjUNu904+ZEZA1Xc1wtvQ==}
@@ -2408,7 +2415,9 @@ snapshots:
   '@typescript/typescript-win32-x64@7.0.2':
     optional: true
 
-  '@uinaf/design@0.1.0': {}
+  '@uinaf/design@1.13.5':
+    dependencies:
+      postcss: 8.5.26
 
   '@vitest/browser-preview@4.1.10(@voidzero-dev/vite-plus-core@0.2.8(@types/node@24.13.3)(esbuild@0.28.1)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.0))(vitest@4.1.10)':
     dependencies:

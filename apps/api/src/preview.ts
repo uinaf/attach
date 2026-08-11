@@ -41,7 +41,7 @@ function mediaBlock(contentType: string, rawPath: string): string {
   }
   return `<div class="stage stage--file motion" style="--i: 1">
       <p class="file-note">This attachment downloads as a file.</p>
-      <a class="u-btn u-btn-primary" href="${src}">download</a>
+      <a class="u-btn u-btn--primary" href="${src}">download</a>
     </div>`;
 }
 
@@ -81,37 +81,43 @@ export function renderPreviewHtml(args: { base: string; meta: PreviewMeta }): st
     <meta name="twitter:image" content="${escapeHtml(ogImage)}" />
     <link rel="icon" href="${BRAND_MARK}" type="image/png" />
     <link rel="stylesheet" href="https://cdn.uinaf.dev/fonts/berkeley-mono/variable/font.css" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@uinaf/design@0.1.0/dist/css/tokens.css" />
+    <link rel="stylesheet" href="https://design.uinaf.dev/tokens.css" />
     <link rel="stylesheet" href="/preview.css" />
   </head>
   <body class="uinaf">
-    <main class="shell">
-      <header class="chrome motion" style="--i: 0">
-        <a class="u-link-plain brand" href="https://attach.uinaf.dev/">
-          <img class="mark" src="${BRAND_MARK}" width="24" height="24" alt="" />
-          <span>attach</span>
-        </a>
-        <a
-          class="u-btn u-btn-primary nav-raw"
-          href="${escapeHtml(rawPath)}"
-          target="_blank"
-          rel="noopener noreferrer"
-          >raw ↗</a
-        >
+    <div class="page">
+      <header class="u-topbar">
+        <div class="u-shell-base u-topbar-row">
+          <a class="u-topbar-mark" href="https://attach.uinaf.dev/">
+            <img src="${BRAND_MARK}" alt="uinaf mark" />attach
+          </a>
+          <div class="u-topbar-actions chrome-actions">
+            <a
+              class="u-btn u-btn--sm u-btn--primary"
+              href="${escapeHtml(rawPath)}"
+              target="_blank"
+              rel="noopener noreferrer"
+              >raw ↗</a
+            >
+          </div>
+        </div>
       </header>
 
-      ${mediaBlock(meta.content_type, rawPath)}
+      <main class="u-shell-base main">
+        ${mediaBlock(meta.content_type, rawPath)}
 
-      <section class="meta motion" style="--i: 2">
-        <dl class="facts">
-          <div><dt>type</dt><dd>${escapeHtml(meta.content_type)}</dd></div>
-          <div><dt>size</dt><dd>${escapeHtml(formatBytes(meta.size_bytes))}</dd></div>
-          <div><dt>expires</dt><dd>${escapeHtml(expires)}</dd></div>
-          <div><dt>digest</dt><dd class="digest">${escapeHtml(meta.digest.replace(/^sha256:/, "").slice(0, 12))}…</dd></div>
-          ${repoPr ? `<div><dt>pr</dt><dd>${repoPr}</dd></div>` : ""}
-        </dl>
-      </section>
-    </main>
+        <section class="band motion" style="--i: 2">
+          <span class="u-label">object</span>
+          <dl class="facts">
+            <div class="u-def"><dt class="u-def-term">type</dt><dd class="u-def-desc">${escapeHtml(meta.content_type)}</dd></div>
+            <div class="u-def"><dt class="u-def-term">size</dt><dd class="u-def-desc">${escapeHtml(formatBytes(meta.size_bytes))}</dd></div>
+            <div class="u-def"><dt class="u-def-term">expires</dt><dd class="u-def-desc">${escapeHtml(expires)}</dd></div>
+            <div class="u-def"><dt class="u-def-term">digest</dt><dd class="u-def-desc digest">${escapeHtml(meta.digest.replace(/^sha256:/, "").slice(0, 12))}…</dd></div>
+            ${repoPr ? `<div class="u-def"><dt class="u-def-term">pr</dt><dd class="u-def-desc">${repoPr}</dd></div>` : ""}
+          </dl>
+        </section>
+      </main>
+    </div>
   </body>
 </html>`;
 }

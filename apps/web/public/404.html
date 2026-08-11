@@ -10,37 +10,59 @@
     <style>
       body {
         margin: 0;
-        background: var(--bg);
-        color: var(--fg-muted);
-        font: var(--text-base) / var(--leading-base) var(--font-mono);
       }
-      main {
-        max-width: 36rem;
-        margin: 0 auto;
-        padding: 64px 20px;
-      }
-      .brand {
-        display: inline-flex;
+      /* templates/not-found.html: centered frame, 24px gutter, 14vh of bottom
+         weight so the mark sits above the optical middle. */
+      .frame {
+        min-height: 100vh;
+        display: flex;
         align-items: center;
-        gap: 8px;
-        margin-bottom: 32px;
-        color: var(--fg);
-        text-decoration: none;
+        justify-content: center;
+        padding: var(--sp-6) var(--sp-6) 14vh;
+        box-sizing: border-box;
       }
-      .brand img {
-        border: 1px solid var(--border-strong);
+      .stack {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: var(--sp-6);
+        text-align: center;
+        animation: ue 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+      }
+      .stack img {
+        border: 1px solid var(--neutral-900);
         display: block;
-        background: #000;
+      }
+      @keyframes ue {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .stack {
+          animation: none;
+        }
       }
     </style>
   </head>
   <body class="uinaf">
-    <main>
-      <a class="brand u-link-plain" href="/">
-        <img src="https://cdn.uinaf.dev/images/uinaf-computer.png" width="24" height="24" alt="" />
-        <span>attach</span>
-      </a>
-      <p>not found.</p>
-    </main>
+    <div class="frame">
+      <div class="stack">
+        <img
+          src="https://cdn.uinaf.dev/images/uinaf-computer.png"
+          width="120"
+          height="120"
+          alt=""
+        />
+        <span class="u-label">404</span>
+        <h1>this page doesn't exist.<br />maybe it never did.</h1>
+        <a class="u-btn" href="/">back home</a>
+      </div>
+    </div>
   </body>
 </html>

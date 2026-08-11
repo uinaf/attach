@@ -7,10 +7,11 @@
     "dev": "vp dev",
     "check": "vp check",
     "build": "vp build",
-    "preview": "vp preview"
+    "preview": "vp preview",
+    "design:check": "design-check . --ignore node_modules --ignore dist"
   },
   "dependencies": {
-    "@uinaf/design": "^0.1.0"
+    "@uinaf/design": "^1.13.5"
   },
   "devDependencies": {
     "@types/node": "catalog:",

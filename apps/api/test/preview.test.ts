@@ -1,10 +1,20 @@
 import { describe, expect, it } from "vite-plus/test";
 import { objectUrl, previewUrl } from "@uinaf/attach-shared";
+import { checkMarkup, formatViolation } from "@uinaf/design/lint";
 import { renderPreviewHtml } from "../src/preview.ts";
 
 describe("preview pages", () => {
   const key = "abcdefghijklmnopqrstuv";
   const base = "https://attach.uinaf.dev";
+
+  // design-check lints .html and .tsx, never .ts, so this page is invisible to
+  // the gate that covers every other surface. A utility renamed upstream then
+  // matches no rule and renders unstyled without failing anything — which is
+  // how `u-btn-primary` survived a major bump here.
+  const designErrors = (html: string): string[] =>
+    checkMarkup(html, "src/preview.ts")
+      .filter((violation) => violation.severity === "error")
+      .map(formatViolation);
 
   it("renders image preview with raw embed and OG pointing at /o/", () => {
     const html = renderPreviewHtml({
@@ -27,6 +37,7 @@ describe("preview pages", () => {
     expect(html).toContain("uinaf/attach#2");
     expect(html).toContain('href="/preview.css"');
     expect(html).not.toContain("<script");
+    expect(designErrors(html)).toEqual([]);
   });
 
   it("renders file download stage for text objects", () => {
@@ -49,6 +60,7 @@ describe("preview pages", () => {
     expect(html).toContain('target="_blank"');
     expect(html).toContain("raw ↗");
     expect(html).not.toContain('<img class="media"');
+    expect(designErrors(html)).toEqual([]);
   });
 
   it("escapes hostile repo metadata", () => {
