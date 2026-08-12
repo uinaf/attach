@@ -3,85 +3,37 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: var(--bg);
-  color: var(--fg);
-  font: var(--text-base) / var(--leading-base) var(--font-mono);
 }
 
-.shell {
-  max-width: 36rem;
-  margin: 0 auto;
-  padding: 64px 20px 48px;
+/* Page frame and bands from pages/product-landing.html: a full-bleed topbar
+   over a base shell, and one 64px band per section. */
+.page {
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
 }
 
-.chrome {
-  margin-bottom: 48px;
+/* No width: the shell is content-box, so a padded 100% is 32px wider than the
+   viewport. Column stretch already fills the row. */
+.main {
+  flex: 1;
 }
 
-.brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: var(--text-base);
-  color: var(--fg-strong);
+.band,
+.band-rule {
+  margin-top: var(--sp-16);
 }
 
-.mark {
-  display: block;
-  border: 1px solid var(--border-strong);
-  background: #000;
+.band > .u-pre {
+  margin-top: var(--sp-3);
 }
 
-.hero {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 16px;
-}
-
+/* The hero kicker pairs the live dot with the label; the template's hero label
+   stands alone, so the row is ours. */
 .kicker {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-}
-
-h1 {
-  margin: 0;
-  font-size: var(--text-2xl);
-  font-weight: var(--weight-regular);
-  line-height: var(--leading-tight);
-  letter-spacing: -0.01em;
-  color: var(--fg-strong);
-  max-width: 22ch;
-  text-wrap: pretty;
-}
-
-.lede {
-  margin: 0;
-  color: var(--fg-muted);
-  max-width: 46ch;
-}
-
-.actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-top: 4px;
-}
-
-.install {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-top: 40px;
-}
-
-.rule {
-  margin: 64px 0 0;
-  border: 0;
-  border-top: 1px solid var(--border);
+  gap: var(--sp-2);
 }
 
 .foot {
@@ -89,16 +41,18 @@ h1 {
   justify-content: space-between;
   align-items: baseline;
   flex-wrap: wrap;
-  gap: 8px 24px;
-  padding-top: 16px;
+  gap: var(--sp-2) var(--sp-6);
+  padding-block: var(--sp-4) var(--sp-12);
   font-size: var(--text-sm);
   color: var(--fg-subtle);
 }
 
-.foot .u-link-plain {
+.foot a {
   color: var(--fg-subtle);
 }
 
+/* Entrance motion. The package ships no motion utility: every template inlines
+   this keyframe in its own <style>, so one class beats four inline copies. */
 @keyframes ue {
   from {
     opacity: 0;

@@ -9,6 +9,7 @@ catalog:
   "@cloudflare/vitest-pool-workers": ^0.20.3
   "@cloudflare/workers-types": ^5.20260801.1
   "@types/node": ^24
+  "@uinaf/design": ^1.13.5
   typescript: ^7.0.2
   vite: npm:@voidzero-dev/vite-plus-core@0.2.8
   vite-plus: 0.2.8
@@ -23,13 +24,10 @@ peerDependencyRules:
   allowedVersions:
     vite: "*"
 
-# Git-hosted packages need repository-form allowBuilds (name alone is registry-only).
-# design ships dist/; prepare is `vp config --no-agent` and is safe to run.
 allowBuilds:
   esbuild: true
   workerd: true
   sharp: true
-  "@uinaf/design@git+https://github.com/uinaf/design.git": true
 
 minimumReleaseAgeExclude:
-  - "@uinaf/design@0.1.0"
+  - "@uinaf/design@1.13.5"
