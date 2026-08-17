@@ -98,6 +98,6 @@ admin CLI in v1.
 
 ## Consequences
 
-- Upload path never accepts GitHub tokens — only `att_` keys.
+- Upload path never accepts GitHub tokens, only `att_` keys.
 - jti replay is structurally impossible without DO/D1 uniqueness.
 - Self-hosters pin their own App client id, allowlist, and agent pubkeys.

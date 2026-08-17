@@ -26,7 +26,7 @@ Keep tracker links out of package-facing docs (`README.md`).
 
 Production Worker CD is GitHub Environment `production` only. Vault
 (`shared/uinaf-attach-deploy`, workers-deploy, attach-github-app) is for local
-bootstrap/break-glass inject — never document vault paths in package docs.
+bootstrap/break-glass inject; never document vault paths in package docs.
 
 ## Rules
 

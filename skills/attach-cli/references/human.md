@@ -33,20 +33,20 @@ attach logout [--json]
 attach help [--json]
 ```
 
-- **login** — GitHub App device flow for the Attach App. Does not read or write
+- **login**: GitHub App device flow for the Attach App. Does not read or write
   `gh auth` tokens. Mints an `att_` key via `POST /v1/enroll/human`. On a
   headless host, immediately relay the emitted verification URL and short-lived
   device code to the intended user, then keep the process running while they
   authorize. Never copy the code into logs, issues, commits, or PRs.
-- **put** — uploads with stored `att_`. Default stdout is the **preview** URL
+- **put**: uploads with stored `att_`. Default stdout is the **preview** URL
   (`/p/…`). `--markdown` embeds the **raw** object URL (`/o/…`). `--url`
   prints raw URL only; `--json` prints the API body.
-- **delete** — authenticated delete by owning principal (URL or object key).
+- **delete**: authenticated delete by owning principal (URL or object key).
   After delete, verify with `curl -sI <url>` (expect 404 or 410) before
   reporting success.
-- **logout** — removes `~/.config/attach/credentials.json` (or
+- **logout**: removes `~/.config/attach/credentials.json` (or
   `$XDG_CONFIG_HOME/attach/credentials.json`).
-- **help** — human-readable usage by default; `--json` describes commands,
+- **help**: human-readable usage by default; `--json` describes commands,
   positionals, flags, types, exclusivity, and environment requirements.
 
 ## Predictable agent calls

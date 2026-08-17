@@ -1,6 +1,6 @@
 # Deploy
 
-Production Worker deploys from CI — not from a laptop.
+Production Worker deploys from CI, not from a laptop.
 
 Push to `main` → `.github/workflows/main.yml` → GitHub Environment `production`
 → `apps/api/scripts/deploy.ts` (build landing assets, dry-run the Worker,
@@ -38,7 +38,7 @@ cd apps/api && pnpm run types
 ```
 
 Commit that file (do not gitignore it). `ready` / CI run `pnpm --filter @uinaf/attach-api types:check`
-(`wrangler types --check`) so drift fails the build — types are not regenerated in CI.
+(`wrangler types --check`) so drift fails the build; CI does not regenerate types.
 Local secrets stay in gitignored `.dev.vars` (see `.dev.vars.example`).
 
 1. Create R2 + D1 matching `wrangler.toml`; put the D1 id in
@@ -130,7 +130,7 @@ Agent JWT enroll: `iss=attach:<app_id>`, `aud` = host of `ATTACH_PUBLIC_BASE`,
 `att_` key for `PUT /v1/objects`.
 
 If `ATTACH_PUBLIC_BASE` is unset, agent enroll falls back to the published
-default host (`attach.uinaf.dev`) for `aud` only — set the var for any
+default host (`attach.uinaf.dev`) for `aud` only; set the var for any
 self-hosted hostname. Invalid values fail enroll with
 `attach_public_base_invalid`.
 
