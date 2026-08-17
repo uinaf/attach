@@ -34,7 +34,7 @@ id bundled, so `attach login` needs no environment setup. For a custom
    - When the CLI emits a verification URL and device code, immediately relay
      both to the intended user and keep the login process running while they
      authorize. The short-lived code is required to cross a headless boundary.
-2. `attach put <file> [--repo owner/name] [--pr N]` — default preview `/p/…`;
+2. `attach put <file> [--repo owner/name] [--pr N]`: default preview `/p/…`;
    `--url` for raw `/o/…`, `--markdown` for an embed, `--json` for the API body;
    add `--dry-run` to validate locally without credentials or a network request
 3. `attach delete <url-or-key>` then `curl -sI <url>` → 404/410 before success
@@ -55,19 +55,19 @@ JWT claims, header-file HTTP, and secret handling:
 
 1. Sign JWT: `iss=attach:<app_id>`, `aud` = public host, `exp≤120s`, fresh `jti`
 2. `POST /v1/enroll/agent` with Authorization via a **header file** (never argv);
-   parse JSON in-process — keep `token` only in memory / secret store
-3. `PUT /v1/objects` the same way — success only when JSON includes both `url`
+   parse JSON in-process; keep `token` only in memory / secret store
+3. `PUT /v1/objects` the same way; success only when JSON includes both `url`
    and `preview_url`
 4. On put **401**: re-enroll once (new `jti`) and put again; further failure → hard-fail
 
 ## Hard rules
 
-- Upload only with `att_` keys — never GitHub tokens / PATs / `ghs_` / install tokens
+- Upload only with `att_` keys, never GitHub tokens / PATs / `ghs_` / install tokens
 - Relay a login device code only to the intended user during its active flow;
   never put it in logs, issues, commits, PRs, or other public/durable artifacts
 - Never print App PEMs or `att_` values (including enroll JSON)
 - Prefer preview URLs; `--markdown` / raw `url` only when the consumer needs embeds
 
 Stop when put returned URLs, delete verified gone, or blocked on install /
-custom client id / allowlist / registry / auth — reply with the URL or precise
+custom client id / allowlist / registry / auth; reply with the URL or precise
 blocker only.

@@ -1,9 +1,9 @@
 ![attach — self-hosted Cloudflare kit for PR and validation media.](https://uinaf.dev/og/banner/attach.png)
 
-# attach
+# uinaf/attach
 
 Upload PR and validation media to your own Cloudflare Worker + R2. Humans and
-GitHub App agents get public URLs — no cookie hacks, no Contents:write on the
+GitHub App agents get public URLs: no cookie hacks, no Contents:write on the
 Worker.
 
 Hosted demo: [attach.uinaf.dev](https://attach.uinaf.dev)
@@ -25,7 +25,7 @@ attach delete <url-or-key>
 ```
 
 `put` prints a `/p/…` preview URL (`--markdown` embeds raw `/o/…`). Upload auth
-is `att_` keys only — never GitHub tokens.
+is `att_` keys only, never GitHub tokens.
 
 The hosted `https://attach.uinaf.dev` service uses the bundled public client id
 for the uinaf Attach GitHub App. Self-hosted deployments set both
@@ -39,7 +39,7 @@ authorize. Do not copy the code into logs, issues, commits, or PRs.
 - [Auth contract](docs/adr-001-auth-and-principals.md)
 - [Deployment and bootstrap](docs/deploy.md)
 - [Release workflow](docs/releasing.md)
-- [attach-cli skill](skills/attach-cli/SKILL.md) — agent skill for CLI / `gh attach`
+- [attach-cli skill](skills/attach-cli/SKILL.md): agent skill for CLI / `gh attach`
 
 ## Contributing
 
