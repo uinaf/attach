@@ -33,7 +33,7 @@ After changing bindings or vars in `wrangler.toml`, regenerate and commit Env ty
 
 ```bash
 cd apps/api && pnpm run types
-# wrangler types --env-file .dev.vars.example --include-runtime=false
+# wrangler types --env-file .dev.vars.example --include-runtime=false --strict-vars=false
 # → small worker-configuration.d.ts (bindings only; not the workerd runtime dump)
 ```
 
