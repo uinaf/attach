@@ -7,7 +7,7 @@ rules:
         "uinaf/.github/*": ref-pin
         "*": hash-pin
   impostor-commit:
-    ignore:
-      # publish-skill.yml pins the private first-party uinaf/tessl-publish-action;
-      # the audit cannot list tags on a repo this token cannot read.
-      - publish-skill.yml
+    # publish-skill.yml pins the private first-party uinaf/tessl-publish-action;
+    # the audit hard-errors when it cannot list tags on a repo the CI token
+    # cannot read, so it is off for this repo.
+    disable: true
