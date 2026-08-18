@@ -6,8 +6,3 @@ rules:
         # digest bumps land once in uinaf/.github for every adopter.
         "uinaf/.github/*": ref-pin
         "*": hash-pin
-  impostor-commit:
-    # publish-skill.yml pins the private first-party uinaf/tessl-publish-action;
-    # the audit hard-errors when it cannot list tags on a repo the CI token
-    # cannot read, so it is off for this repo.
-    disable: true

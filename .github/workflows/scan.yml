@@ -20,3 +20,7 @@ jobs:
     permissions:
       contents: read
     uses: uinaf/.github/.github/workflows/scan.yml@main
+    with:
+      # publish-skill.yml pins the private first-party uinaf/tessl-publish-action;
+      # the online tag-listing audits hard-error on a repo this token cannot read.
+      zizmor-args: --no-online-audits
