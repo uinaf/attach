@@ -1,0 +1,25 @@
+name: Scan
+
+# No push trigger: the push-to-main pipeline already runs the same shared
+# scan as a release gate.
+on:
+  pull_request:
+  schedule:
+    - cron: "23 6 * * 1"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: scan-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scan:
+    permissions:
+      contents: read
+    uses: uinaf/.github/.github/workflows/scan.yml@main
+    with:
+      # publish-skill.yml pins the private first-party uinaf/tessl-publish-action;
+      # the online tag-listing audits hard-error on a repo this token cannot read.
+      zizmor-args: --no-online-audits
