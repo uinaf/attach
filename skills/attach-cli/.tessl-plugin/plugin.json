@@ -1,6 +1,0 @@
-{
-  "name": "uinaf/attach-cli",
-  "description": "Uploads PR and validation media to a self-hosted attach Worker via the installed attach CLI (`attach` or `gh attach`): zero-config hosted device-flow login with an ATTACH_GITHUB_CLIENT_ID override for custom deployments, put/delete/logout of screenshots and artifacts, preview `/p/…` URLs, raw `/o/…` embeds via `--markdown`, and `--json`/`--url` output; or GitHub App JWT enroll then `att_` PUT for agents. Use when the user asks to attach a screenshot, upload PR media, put an image on attach.uinaf.dev (or ATTACH_API_BASE), share a validation screenshot URL, run attach login/put/delete/logout, use gh attach, host validation media, take down attach media, or enroll an App agent for attach. Do not use for Worker deploy, vault, Cloudflare ops, or inventing a second upload client.",
-  "skills": ["."],
-  "version": "0.1.4"
-}
