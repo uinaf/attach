@@ -36,7 +36,7 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: node_modules/.vite/task-cache
-          key: vite-task-${{ runner.os }}-${{ runner.arch }}-${{ github.run_id }}-${{ github.run_attempt }}
+          key: vite-task-${{ runner.os }}-${{ runner.arch }}-${{ github.sha }}
           restore-keys: |
             vite-task-${{ runner.os }}-${{ runner.arch }}-
 
@@ -85,11 +85,3 @@ jobs:
         run: |
           pnpm exec vp run -t @uinaf/attach-web#build
           node apps/api/scripts/deploy.ts
-
-  release:
-    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
-    needs: [verify, scan]
-    permissions:
-      contents: read
-      id-token: write
-    uses: ./.github/workflows/release.yml

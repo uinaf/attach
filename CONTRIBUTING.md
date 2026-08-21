@@ -14,7 +14,7 @@ Node (see `.node-version`) with Corepack enabled:
 
 ```sh
 ./scripts/verify.sh
-# equivalent: pnpm run verify → pnpm exec vp run ready
+# equivalent: pnpm run verify → vp run ready
 # force every lane: pnpm exec vp run --no-cache ready
 ```
 

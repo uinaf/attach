@@ -30,6 +30,7 @@ export default defineConfig({
           "@uinaf/attach-api#build",
           "@uinaf/attach-cli#build",
           "@uinaf/attach-shared#build",
+          "@uinaf/attach-web#build",
         ],
       },
       checks: {
