@@ -52,16 +52,3 @@ retries the idempotent formula update without publishing another version.
 
 Push to `main` → GitHub Environment `production` → wrangler (see [Deploy](deploy.md)).
 Do not deploy the production Worker from a laptop.
-
-## Tessl skill (`uinaf/attach-cli`)
-
-Agent skill package under `skills/attach-cli/`. Skill SemVer lives in
-`skills/attach-cli/.tessl-plugin/plugin.json` and is independent of the npm CLI
-version.
-
-Push to `main` touching `skills/attach-cli/**` → `.github/workflows/publish-skill.yml`
-→ GitHub Environment `skill-release` (`TESSL_TOKEN`) →
-Tessl plugin lint and manifest-version publish →
-`scripts/verify-published-skill.sh` (strict Tessl install + Codex discovery).
-
-Cloud Tessl review is not part of publish.
