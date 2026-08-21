@@ -1,52 +1,18 @@
 name: Release
 
 # npm Trusted Publishing (OIDC) for @uinaf/attach-cli + uinaf-releaser.
-# Worker deploy stays in main.yml — never needs: [release].
+# Worker deploy stays in main.yml. Main verification gates both delivery jobs.
 #
 # First-time bootstrap (human, once): manual npm publish of @uinaf/attach-cli,
 # then `npm trust github …` — see docs/releasing.md. CI owns every later release.
 
 on:
-  push:
-    branches: [main]
+  workflow_call:
 
 permissions: {}
 
 jobs:
-  verify:
-    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: read
-    concurrency:
-      group: verify-release-${{ github.workflow }}-${{ github.ref }}
-      cancel-in-progress: true
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-          fetch-depth: 0
-      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
-        with:
-          standalone: true
-      - uses: voidzero-dev/setup-vp@313600b80b104eadebb9111787d37a2e83e014ca # v1.17.0
-        with:
-          node-version-file: ".node-version"
-          cache: true
-          run-install: |
-            - args: ["--frozen-lockfile"]
-      - run: pnpm exec vp run ready
-
-  scan:
-    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
-    permissions:
-      contents: read
-    uses: uinaf/.github/.github/workflows/scan.yml@main
-
   release:
-    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
-    needs: [verify, scan]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: release

@@ -15,7 +15,12 @@ Node (see `.node-version`) with Corepack enabled:
 ```sh
 ./scripts/verify.sh
 # equivalent: pnpm run verify → pnpm exec vp run ready
+# force every lane: pnpm exec vp run --no-cache ready
 ```
+
+The repository-owned Vite Task graph runs formatting, linting, design checks,
+generated-type freshness, tests, and builds in parallel. Valid unchanged lanes
+are restored from the task cache; the forced command bypasses it.
 
 API Worker tests: Node characterization via vite-plus, plus
 `@cloudflare/vitest-pool-workers` (`pnpm --filter @uinaf/attach-api test:workers`).

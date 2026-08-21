@@ -22,5 +22,39 @@ export default defineConfig({
   },
   run: {
     cache: true,
+    tasks: {
+      builds: {
+        cache: false,
+        command: 'node -e ""',
+        dependsOn: [
+          "@uinaf/attach-api#build",
+          "@uinaf/attach-cli#build",
+          "@uinaf/attach-shared#build",
+        ],
+      },
+      checks: {
+        cache: false,
+        command: 'node -e ""',
+        dependsOn: ["design", "format", "lint", "types"],
+      },
+      design: "vp run @uinaf/attach-web#design:check",
+      format: "vp fmt --check",
+      lint: "vp lint",
+      ready: {
+        cache: false,
+        command: 'node -e ""',
+        dependsOn: ["builds", "design", "format", "lint", "tests", "types"],
+      },
+      tests: {
+        cache: false,
+        command: 'node -e ""',
+        dependsOn: [
+          "@uinaf/attach-api#test",
+          "@uinaf/attach-cli#test",
+          "@uinaf/attach-shared#test",
+        ],
+      },
+      types: "pnpm --filter @uinaf/attach-api types:check",
+    },
   },
 });
