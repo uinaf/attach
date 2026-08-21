@@ -35,6 +35,7 @@ describe("api keys", () => {
       expect(parsed?.keyId).toBe(minted.keyId);
       const hash = await hashApiKeySecret(minted.secret);
       expect(await verifyApiKeySecret(parsed!.secret, hash)).toBe(true);
+      expect(await verifyApiKeySecret(mintApiKey().secret, hash)).toBe(false);
     }
   });
 
