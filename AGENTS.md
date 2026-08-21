@@ -36,5 +36,7 @@ bootstrap/break-glass inject; never document vault paths in package docs.
 - Objects: raw `/o/<key>`, preview `/p/<key>`; put returns both `url` and `preview_url`.
 - Do not commit secrets, PEM private keys, account/D1 ids, or font binaries.
 - Prefer repo-scoped vite-plus via `pnpm exec vp` (never a global `vp`); wrangler for Worker deploy.
+- Use `pnpm run verify` for cached parallel verification and
+  `pnpm exec vp run --no-cache ready` to force every lane.
 - After `apps/api/wrangler.toml` binding/var changes: `pnpm --filter @uinaf/attach-api types` and commit the Env-only `worker-configuration.d.ts` (never the full runtime dump; CI checks freshness via `types:check`).
 - Prod CD: GitHub Environment `production`. Runtime secrets: Cloudflare.
