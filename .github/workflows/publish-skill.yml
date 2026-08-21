@@ -7,7 +7,6 @@ on:
     paths:
       - "skills/attach-cli/**"
       - "scripts/verify-published-skill.sh"
-      - ".github/workflows/publish-skill.yml"
   workflow_dispatch:
 
 permissions:
@@ -40,16 +39,14 @@ jobs:
 
       - name: Publish manifest version
         id: publish
-        uses: uinaf/tessl-publish-action@fe80775c176da0a796e78948a0b1879caf1c82fa # v2.4.0
-        with:
-          review-mode: lint
-          publish-all: "true"
-          version-strategy: manifest
-          commit-version-bumps: "false"
+        run: |
+          tessl plugin lint skills/attach-cli
+          tessl plugin publish skills/attach-cli
+          jq -r '"version=" + .version' \
+            skills/attach-cli/.tessl-plugin/plugin.json >> "$GITHUB_OUTPUT"
 
       - name: Smoke published skill
         env:
-          PUBLISHED_VERSIONS: ${{ steps.publish.outputs.versions }}
+          PUBLISHED_VERSION: ${{ steps.publish.outputs.version }}
         run: |
-          version=$(jq -er '."skills/attach-cli"' <<< "$PUBLISHED_VERSIONS")
-          ./scripts/verify-published-skill.sh "$version"
+          ./scripts/verify-published-skill.sh "$PUBLISHED_VERSION"
