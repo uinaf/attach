@@ -34,7 +34,7 @@ describe("incremental usage migration", () => {
     const usage = db
       .prepare("SELECT live_bytes FROM principal_usage WHERE principal_id = 'user:migrate'")
       .get();
-    expect(expired?.deleted_at).not.toBeNull();
+    expect(expired).toEqual({ deleted_at: expect.any(Number) });
     expect(usage?.live_bytes).toBe(100);
   });
 });

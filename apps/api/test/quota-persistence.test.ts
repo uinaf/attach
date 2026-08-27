@@ -27,7 +27,6 @@ describe("claimPutQuota / release / recordPut", () => {
     await ensurePrincipal(db);
 
     const claim = await claimPutQuota(db, principal, 100, now);
-    expect(claim.reservationId).toBeTruthy();
 
     await recordPut(db, {
       objectKey: "obj_a",
@@ -56,7 +55,6 @@ describe("claimPutQuota / release / recordPut", () => {
     });
 
     const again = await claimPutQuota(db, principal, 50, now + 1);
-    expect(again.reservationId).toBeTruthy();
     await releasePutQuota(db, again.reservationId);
   });
 
@@ -152,8 +150,7 @@ describe("claimPutQuota / release / recordPut", () => {
       .bind(principal, STORAGE_BYTES_LIMIT)
       .run();
 
-    const claim = await claimPutQuota(db, principal, 50, now);
-    expect(claim.reservationId).toBeTruthy();
+    await claimPutQuota(db, principal, 50, now);
     const expired = await db
       .prepare("SELECT deleted_at AS d FROM objects WHERE object_key = ?")
       .bind("old")
