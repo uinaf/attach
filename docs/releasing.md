@@ -52,3 +52,37 @@ retries the idempotent formula update without publishing another version.
 
 Push to `main` → GitHub Environment `production` → wrangler (see [Deploy](deploy.md)).
 Do not deploy the production Worker from a laptop.
+
+## Recover the interrupted CLI 0.6.2 publication
+
+npm rejected the self-hosted runner after semantic-release created signed
+commit `7a0c78d311323ae0677389405c55f9d04c920928` and tag `cli-v0.6.2`.
+The release job now uses GitHub-hosted Ubuntu because
+[npm provenance requires a supported hosted runner](https://docs.npmjs.com/generating-provenance-statements/).
+
+Dispatch `release.yml` on `main` to run its fixed recovery path. It checks out
+the exact event commit and validates the signed tag, ancestry, and package
+version. Only the recovery workflow, helper, test, and this document may differ
+from the tag; package inputs must be unchanged. The owning verification gate
+builds the package before publication.
+
+It publishes only a missing npm version through the existing OIDC identity,
+then creates only a missing GitHub Release. npm integrity must match the
+verified build; npm gitHead must match the event commit. The unchanged tag
+remains at the original signed version commit. Lookup failures other than
+a confirmed 404 stop recovery. The existing Homebrew updater then consumes
+that exact npm version and writes the formula through the signed App path.
+
+The npm-served provenance bundle must identify the tarball's SHA-512 digest,
+this repository's `release.yml`, a hosted runner, and the real dispatch event
+commit on main. npm validates the signed bundle at ingestion; recovery checks
+those payload claims against the package and event.
+Release notes distinguish that build from the unchanged release tag. GitHub
+environment variables are never overridden to pretend the workflow ran at
+the old tag.
+
+This dispatch does not run semantic-release or deploy the Worker. It never
+moves tags or creates another version. A repeat dispatch at the same commit
+checks the existing package against the rebuilt tarball before continuing
+with the idempotent Homebrew update. Remove this one-shot dispatch path after
+publication and the formula have been verified.
