@@ -5,9 +5,70 @@ import {
   checkProvenance,
   checkRelease,
   lookup,
+  lookupPublished,
 } from "../scripts/recover-0.6.2.ts";
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.useRealTimers();
+});
+
+describe("post-publication registry visibility", () => {
+  it("waits five seconds between confirmed 404s and stops when visible", async () => {
+    vi.useFakeTimers();
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(null, { status: 404 }))
+      .mockResolvedValueOnce(new Response(null, { status: 404 }))
+      .mockResolvedValueOnce(Response.json({ version: "0.6.2" }));
+    vi.stubGlobal("fetch", fetch);
+    const result = lookupPublished("https://registry.npmjs.org/fixture");
+    await vi.advanceTimersByTimeAsync(4_999);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(5_001);
+    await expect(result).resolves.toEqual({ version: "0.6.2" });
+    expect(fetch).toHaveBeenCalledTimes(3);
+  });
+
+  it("stops after twelve confirmed missing responses", async () => {
+    vi.useFakeTimers();
+    const fetch = vi.fn().mockResolvedValue(new Response(null, { status: 404 }));
+    vi.stubGlobal("fetch", fetch);
+    const result = lookupPublished("https://registry.npmjs.org/fixture");
+    await vi.runAllTimersAsync();
+    await expect(result).resolves.toBeNull();
+    expect(fetch).toHaveBeenCalledTimes(12);
+  });
+
+  for (const status of [401, 403, 429, 500, 503]) {
+    it(`does not retry HTTP ${status}`, async () => {
+      const fetch = vi.fn().mockResolvedValue(new Response(null, { status }));
+      vi.stubGlobal("fetch", fetch);
+      await expect(lookupPublished("https://registry.npmjs.org/fixture")).rejects.toThrow(
+        `HTTP ${status}`,
+      );
+      expect(fetch).toHaveBeenCalledTimes(1);
+    });
+  }
+
+  it("does not retry malformed successful responses", async () => {
+    const fetch = vi.fn().mockResolvedValue(Response.json([]));
+    vi.stubGlobal("fetch", fetch);
+    await expect(lookupPublished("https://registry.npmjs.org/fixture")).rejects.toThrow(
+      "Expected object",
+    );
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not retry network failures", async () => {
+    const fetch = vi.fn().mockRejectedValue(new Error("network unavailable"));
+    vi.stubGlobal("fetch", fetch);
+    await expect(lookupPublished("https://registry.npmjs.org/fixture")).rejects.toThrow(
+      "network unavailable",
+    );
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+});
 
 describe("fixed release recovery", () => {
   it("allows only the four recovery files to differ from the tag", () => {

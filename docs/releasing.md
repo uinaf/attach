@@ -70,7 +70,10 @@ It publishes only a missing npm version through the existing OIDC identity,
 then creates only a missing GitHub Release. npm integrity must match the
 verified build; npm gitHead must match the event commit. The unchanged tag
 remains at the original signed version commit. Lookup failures other than
-a confirmed 404 stop recovery. The existing Homebrew updater then consumes
+a confirmed 404 stop recovery. Immediately after publication, missing registry
+metadata or provenance is checked up to 12 times, five seconds apart, to allow
+for observed npm visibility lag. Preflight still treats a confirmed 404 as absence.
+The existing Homebrew updater then consumes
 that exact npm version and writes the formula through the signed App path.
 
 The npm-served provenance bundle must identify the tarball's SHA-512 digest,

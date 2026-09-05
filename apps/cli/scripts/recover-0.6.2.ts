@@ -24,6 +24,16 @@ export async function lookup(url: string, token?: string): Promise<Record<string
   return record(await response.json());
 }
 
+export async function lookupPublished(url: string): Promise<Record<string, unknown> | null> {
+  // Registry attestations can remain 404 briefly after npm accepts publication.
+  for (let attempt = 0; attempt < 12; attempt++) {
+    const result = await lookup(url);
+    if (result !== null || attempt === 11) return result;
+    await new Promise((resolve) => setTimeout(resolve, 5_000));
+  }
+  return null;
+}
+
 export function checkInputs(files: string[]): void {
   const recoveryFiles = new Set([
     ".github/workflows/release.yml",
@@ -154,13 +164,14 @@ async function main(): Promise<void> {
   assert.equal(manifest.name, "@uinaf/attach-cli");
   assert.equal(manifest.version, version);
 
-  const pkg = await lookup("https://registry.npmjs.org/@uinaf%2fattach-cli/0.6.2");
-  const release = await github(`releases/tags/${tag}`);
   const mode = process.argv[2];
   assert(mode === "preflight" || mode === "published" || mode === "complete");
+  const registry = mode === "published" ? lookupPublished : lookup;
+  const pkg = await registry("https://registry.npmjs.org/@uinaf%2fattach-cli/0.6.2");
+  const release = await github(`releases/tags/${tag}`);
   if (pkg) {
     checkPackage(pkg, undefined, buildSha);
-    const attestation = await lookup(
+    const attestation = await registry(
       "https://registry.npmjs.org/-/npm/v1/attestations/@uinaf%2fattach-cli@0.6.2",
     );
     assert(attestation, "npm provenance bundle is missing");
