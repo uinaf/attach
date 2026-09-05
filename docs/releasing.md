@@ -61,10 +61,10 @@ The release job now uses GitHub-hosted Ubuntu because
 [npm provenance requires a supported hosted runner](https://docs.npmjs.com/generating-provenance-statements/).
 
 Dispatch `release.yml` on `main` to run its fixed recovery path. It checks out
-the exact event commit and validates the signed tag, ancestry, and package
-version. Only the recovery workflow, helper, test, and this document may differ
-from the tag; package inputs must be unchanged. The owning verification gate
-builds the package before publication.
+the exact event commit and validates the unchanged tag at its signed release
+commit, ancestry, and package version. Only the recovery workflow, helper, test,
+and this document may differ from the tag; package inputs must be unchanged.
+The owning verification gate builds the package before publication.
 
 It publishes only a missing npm version through the existing OIDC identity,
 then creates only a missing GitHub Release. npm integrity must match the
