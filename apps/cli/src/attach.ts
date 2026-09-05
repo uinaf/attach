@@ -1,4 +1,5 @@
-import { readFileSync } from "node:fs";
+import { closeSync, constants, fstatSync, openSync, readSync } from "node:fs";
+import { MAX_UPLOAD_BYTES, validateContent } from "@uinaf/attach-shared";
 import type { EnrollResponse, PutResponse } from "@uinaf/attach-shared";
 import {
   describeCli,
@@ -8,7 +9,13 @@ import {
   wantsJson,
 } from "./cli-contract.ts";
 import { CliError, normalizeCliError } from "./cli-errors.ts";
-import { apiBase, clearCredentials, loadCredentials, saveCredentials } from "./config.ts";
+import {
+  apiBase,
+  clearCredentials,
+  loadCredentials,
+  saveCredentials,
+  type Credentials,
+} from "./config.ts";
 import { deviceAuthorizationPrompt, loginWithDeviceFlow } from "./device-flow.ts";
 import { attachOrigin, parseObjectRefSyntax, requireMatchingOrigin } from "./object-ref.ts";
 import { formatPutOutput } from "./put-output.ts";
@@ -57,12 +64,16 @@ async function cmdLogin(command: Extract<ParsedCommand, { name: "login" }>): Pro
   console.error(`Key id: ${enrolled.key_id}`);
 }
 
-function requireCreds() {
-  const creds = loadCredentials();
+function requireCreds(creds: Credentials | null) {
   if (!creds?.token) {
     throw new CliError("NOT_LOGGED_IN", "Not logged in. Run: attach login");
   }
   return creds;
+}
+
+// Saved credentials stay bound to the service that issued them.
+function effectiveApiBase(creds: Credentials | null): string {
+  return creds?.api_base || apiBase();
 }
 
 type PreparedPut = {
@@ -71,18 +82,57 @@ type PreparedPut = {
 };
 
 function preparePut(filePath: string): PreparedPut {
-  let bytes: Uint8Array;
+  let fd: number | undefined;
   try {
-    bytes = readFileSync(filePath);
+    fd = openSync(filePath, constants.O_RDONLY | constants.O_NONBLOCK);
+    const stat = fstatSync(fd);
+    if (!stat.isFile()) {
+      throw new CliError("FILE_UNREADABLE", "Upload input must be a regular file.", {
+        exitCode: 2,
+      });
+    }
+    if (stat.size > MAX_UPLOAD_BYTES) {
+      throw new CliError("FILE_TOO_LARGE", "File exceeds the 25 MiB upload limit.", {
+        exitCode: 2,
+      });
+    }
+    const chunks: Buffer[] = [];
+    let size = 0;
+    // Read one extra byte to detect growth beyond the limit after fstat.
+    while (size <= MAX_UPLOAD_BYTES) {
+      const chunk = Buffer.alloc(Math.min(64 * 1024, MAX_UPLOAD_BYTES + 1 - size));
+      const count = readSync(fd, chunk);
+      if (count === 0) break;
+      size += count;
+      if (size > MAX_UPLOAD_BYTES) {
+        throw new CliError("FILE_TOO_LARGE", "File exceeds the 25 MiB upload limit.", {
+          exitCode: 2,
+        });
+      }
+      chunks.push(chunk.subarray(0, count));
+    }
+    if (size === 0) {
+      throw new CliError("FILE_EMPTY", "File is empty.", { exitCode: 2 });
+    }
+    const bytes = Buffer.concat(chunks, size);
+    const contentType = validateContent(guessContentType(filePath, bytes), bytes.subarray(0, 256));
+    if (!contentType) {
+      throw new CliError("UNSUPPORTED_CONTENT", "File content is not supported.", { exitCode: 2 });
+    }
+    return { bytes, contentType };
   } catch (error) {
+    if (error instanceof CliError) throw error;
     const message = error instanceof Error ? error.message : String(error);
     throw new CliError("FILE_UNREADABLE", message, { exitCode: 2 });
+  } finally {
+    if (fd !== undefined) closeSync(fd);
   }
-  return { bytes, contentType: guessContentType(filePath, bytes) };
 }
 
 async function cmdPut(command: Extract<ParsedCommand, { name: "put" }>): Promise<void> {
   const prepared = preparePut(command.file);
+  const saved = loadCredentials();
+  const base = effectiveApiBase(saved);
   if (command.dryRun) {
     const result = {
       dry_run: true,
@@ -92,7 +142,7 @@ async function cmdPut(command: Extract<ParsedCommand, { name: "put" }>): Promise
       repo: command.repo ?? null,
       pr: command.pr ?? null,
       output: command.output,
-      target_origin: attachOrigin(apiBase()),
+      target_origin: attachOrigin(base),
     };
     if (command.output === "json") console.log(JSON.stringify(result));
     else {
@@ -103,7 +153,7 @@ async function cmdPut(command: Extract<ParsedCommand, { name: "put" }>): Promise
     return;
   }
 
-  const creds = requireCreds();
+  const creds = requireCreds(saved);
   const headers: Record<string, string> = {
     Authorization: `Bearer ${creds.token}`,
     "Content-Type": prepared.contentType,
@@ -112,7 +162,7 @@ async function cmdPut(command: Extract<ParsedCommand, { name: "put" }>): Promise
   if (command.repo) headers["X-Attach-Repo"] = command.repo;
   if (command.pr !== undefined) headers["X-Attach-Pr"] = String(command.pr);
 
-  const res = await fetch(`${creds.api_base || apiBase()}/v1/objects`, {
+  const res = await fetch(`${base}/v1/objects`, {
     method: "PUT",
     headers,
     body: prepared.bytes,
@@ -133,8 +183,10 @@ async function cmdPut(command: Extract<ParsedCommand, { name: "put" }>): Promise
 
 async function cmdDelete(command: Extract<ParsedCommand, { name: "delete" }>): Promise<void> {
   const parsed = parseObjectRefSyntax(command.ref);
+  const saved = loadCredentials();
+  const base = effectiveApiBase(saved);
   if (command.dryRun) {
-    const origin = attachOrigin(apiBase());
+    const origin = attachOrigin(base);
     const key = requireMatchingOrigin(parsed, origin);
     const result = { dry_run: true, key, target_origin: origin };
     if (command.json) console.log(JSON.stringify(result));
@@ -142,8 +194,7 @@ async function cmdDelete(command: Extract<ParsedCommand, { name: "delete" }>): P
     return;
   }
 
-  const creds = requireCreds();
-  const base = creds.api_base || apiBase();
+  const creds = requireCreds(saved);
   const key = requireMatchingOrigin(parsed, base);
   const res = await fetch(`${base}/v1/objects/${key}`, {
     method: "DELETE",
