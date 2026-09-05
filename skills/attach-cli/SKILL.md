@@ -1,6 +1,6 @@
 ---
 name: attach-cli
-description: "Uploads PR and validation media to a self-hosted attach Worker via the installed attach CLI (`attach` or `gh attach`): zero-config hosted device-flow login with an ATTACH_GITHUB_CLIENT_ID override for custom deployments, put/delete/logout of screenshots and artifacts, preview `/p/…` URLs, raw `/o/…` embeds via `--markdown`, and `--json`/`--url` output; or GitHub App JWT enroll then `att_` PUT for agents. Use when the user asks to attach a screenshot, upload PR media, put an image on attach.uinaf.dev (or ATTACH_API_BASE), share a validation screenshot URL, run attach login/put/delete/logout, use gh attach, host validation media, take down attach media, or enroll an App agent for attach. Do not use for Worker deploy, vault, Cloudflare ops, or inventing a second upload client."
+description: "Upload, share, or take down PR and validation media (screenshots, artifacts) on a self-hosted attach Worker through the installed attach CLI (`attach` or `gh attach`), or enroll a GitHub App agent for `att_` uploads. Use for any request to attach, upload, host, get a URL for, or delete media on attach.uinaf.dev (or a custom ATTACH_API_BASE), and for attach login/logout. Do not use for Worker deploy, vault, Cloudflare ops, or building another upload client."
 ---
 
 # attach-cli
@@ -68,6 +68,6 @@ JWT claims, header-file HTTP, and secret handling:
 - Never print App PEMs or `att_` values (including enroll JSON)
 - Prefer preview URLs; `--markdown` / raw `url` only when the consumer needs embeds
 
-Stop when put returned URLs, delete verified gone, or blocked on install /
-custom client id / allowlist / registry / auth; reply with the URL or precise
-blocker only.
+Stop when put returned URLs, delete is verified gone, or you are blocked on
+install, custom client id, allowlist, registry, or auth. Report the resulting
+URL or the exact blocker.
