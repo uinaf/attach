@@ -20,13 +20,7 @@
         "pkgRoot": "apps/cli"
       }
     ],
-    [
-      "@jno21/semantic-release-github-commit",
-      {
-        "files": ["apps/cli/package.json"],
-        "commitMessage": "chore(release): ${nextRelease.version} [skip ci]"
-      }
-    ],
+    "./apps/cli/scripts/release-commit.ts",
     [
       "@semantic-release/github",
       {

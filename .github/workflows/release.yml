@@ -7,7 +7,6 @@ name: Release
 # then `npm trust github …` — see docs/releasing.md. CI owns every later release.
 
 on:
-  workflow_dispatch:
   push:
     branches: [main]
 
@@ -15,7 +14,7 @@ permissions: {}
 
 jobs:
   verify:
-    if: ${{ github.event_name == 'push' && !contains(github.event.head_commit.message, '[skip ci]') }}
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
     runs-on: blacksmith-2vcpu-ubuntu-2404
     timeout-minutes: 10
     permissions:
@@ -40,16 +39,13 @@ jobs:
       - run: pnpm exec vp run ready
 
   scan:
-    if: ${{ github.event_name == 'push' && !contains(github.event.head_commit.message, '[skip ci]') }}
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
     permissions:
       contents: read
     uses: uinaf/.github/.github/workflows/scan.yml@main
 
   release:
-    if: >-
-      ${{ always() && !cancelled() &&
-          ((github.event_name == 'push' && needs.verify.result == 'success' && needs.scan.result == 'success') ||
-           (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')) }}
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
     needs: [verify, scan]
     # npm provenance requires a GitHub-hosted runner.
     runs-on: ubuntu-24.04
@@ -77,20 +73,7 @@ jobs:
           cache: false
           run-install: |
             - args: ["--frozen-lockfile"]
-      - name: Validate the existing CLI 0.6.2 release state
-        if: github.event_name == 'workflow_dispatch'
-        id: recovery
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: node apps/cli/scripts/recover-0.6.2.ts preflight
-      - name: Verify and pack the recovery build
-        if: github.event_name == 'workflow_dispatch'
-        run: |
-          pnpm run verify
-          cd apps/cli
-          npm pack --ignore-scripts
       - name: Build and pack smoke
-        if: github.event_name == 'push'
         run: |
           set -euo pipefail
           pnpm --filter @uinaf/attach-cli build
@@ -111,12 +94,10 @@ jobs:
             homebrew-tap
           permission-contents: write
       - name: Authorize release writes
-        if: github.event_name == 'push'
         env:
           GH_TOKEN: ${{ steps.release-bot.outputs.token }}
         run: gh auth setup-git
       - id: semantic
-        if: github.event_name == 'push'
         uses: cycjimmy/semantic-release-action@b12c8f6015dc215fe37bc154d4ad456dd3833c90 # v6.0.0
         with:
           semantic_version: 25.0.3
@@ -124,41 +105,17 @@ jobs:
             @semantic-release/commit-analyzer@13.0.1
             @semantic-release/release-notes-generator@14.1.1
             @semantic-release/npm@13.1.5
-            @jno21/semantic-release-github-commit@1.0.1
             @semantic-release/github@12.0.8
             conventional-changelog-conventionalcommits@9.3.1
         env:
           GITHUB_TOKEN: ${{ steps.release-bot.outputs.token }}
           GH_TOKEN: ${{ steps.release-bot.outputs.token }}
 
-      - name: Publish the missing npm package with OIDC
-        if: github.event_name == 'workflow_dispatch' && steps.recovery.outputs.publish == 'true'
-        working-directory: apps/cli
-        run: npm publish --ignore-scripts --access public --provenance
-      - name: Verify published package integrity and provenance
-        if: github.event_name == 'workflow_dispatch'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: node apps/cli/scripts/recover-0.6.2.ts published
-      - name: Create the missing GitHub release without changing its tag
-        if: github.event_name == 'workflow_dispatch' && steps.recovery.outputs.release == 'true'
-        env:
-          GH_TOKEN: ${{ steps.release-bot.outputs.token }}
-          RECOVERY_SHA: ${{ github.sha }}
-        run: |
-          gh release create cli-v0.6.2 --verify-tag --title cli-v0.6.2 --generate-notes --notes-start-tag cli-v0.6.1 \
-            --notes "Recovered npm publication from build $RECOVERY_SHA. Package inputs match the unchanged tag cli-v0.6.2 at its signed release commit; provenance and npm gitHead identify the recovery build."
-      - name: Verify recovered release parity
-        if: github.event_name == 'workflow_dispatch'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: node apps/cli/scripts/recover-0.6.2.ts complete
-
       - name: Resolve release target
         id: release-target
         env:
           GH_TOKEN: ${{ steps.release-bot.outputs.token }}
-          NEW_RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && 'cli-v0.6.2' || steps.semantic.outputs.new_release_git_tag }}
+          NEW_RELEASE_TAG: ${{ steps.semantic.outputs.new_release_git_tag }}
         run: |
           set -euo pipefail
           tag="$NEW_RELEASE_TAG"
