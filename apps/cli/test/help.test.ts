@@ -88,7 +88,7 @@ describe("CLI help", () => {
   it("dry-runs put without credentials", () => {
     const root = mkdtempSync(join(tmpdir(), "attach-cli-test-"));
     const file = join(root, "shot.png");
-    writeFileSync(file, new Uint8Array([0x89, 0x50, 0x4e, 0x47]));
+    writeFileSync(file, new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
     const result = spawnSync(
       process.execPath,
       [entrypoint, "put", file, "--repo", "uinaf/attach", "--pr", "15", "--dry-run", "--json"],
@@ -102,7 +102,7 @@ describe("CLI help", () => {
     expect(JSON.parse(result.stdout)).toEqual({
       dry_run: true,
       file,
-      size: 4,
+      size: 8,
       content_type: "image/png",
       repo: "uinaf/attach",
       pr: 15,
