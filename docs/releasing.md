@@ -1,9 +1,9 @@
 # Releasing
 
-| Workflow                        | On push to `main`                                                          |
-| ------------------------------- | -------------------------------------------------------------------------- |
-| `.github/workflows/main.yml`    | verify → secret scan → Worker deploy (`production`)                        |
-| `.github/workflows/release.yml` | verify → secret scan → npm + Homebrew (`release`, OIDC + `uinaf-releaser`) |
+One workflow runs on push to `main`. `.github/workflows/release.yml` runs a
+single `verify` and a single `scan`, then `deploy` (Worker, `production`) and
+`release` (npm + Homebrew, `release`, OIDC + `uinaf-releaser`) as siblings, both
+on `needs: [verify, scan]`.
 
 Worker deploy stays independent of npm. Do not make deploy `needs: [release]`.
 

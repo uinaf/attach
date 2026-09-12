@@ -2,7 +2,7 @@
 
 Production Worker deploys from CI, not from a laptop.
 
-Push to `main` → `.github/workflows/main.yml` → GitHub Environment `production`
+Push to `main` → `.github/workflows/release.yml` → GitHub Environment `production`
 → `apps/api/scripts/deploy.ts` (build landing assets, dry-run the Worker,
 validate R2 lifecycle, D1 migrate, deploy). The dry run and lifecycle gate must
 pass before production D1 is mutated.
