@@ -1,7 +1,14 @@
 name: Release
 
 # npm Trusted Publishing (OIDC) for @uinaf/attach-cli + uinaf-releaser.
-# Worker deploy stays in main.yml — never needs: [release].
+# The file name is load-bearing: the trusted publisher binds this package's
+# OIDC identity to `.github/workflows/release.yml` plus the `release`
+# environment. So the publish job stays here, and everything else that runs on
+# a push to main came to it.
+#
+# `deploy` and `release` are siblings, both on `needs: [verify, scan]`.
+# Never make deploy `needs: [release]`. attach.uinaf.dev must keep shipping
+# when publication fails.
 #
 # First-time bootstrap (human, once): manual npm publish of @uinaf/attach-cli,
 # then `npm trust github …` — see docs/releasing.md. CI owns every later release.
@@ -12,37 +19,65 @@ on:
 
 permissions: {}
 
+concurrency:
+  group: main-${{ github.repository }}
+  cancel-in-progress: false
+
 jobs:
+  # One verify and one secret scan for the whole push pipeline. These used to
+  # live here and in main.yml, on the same trigger, so every push to main ran
+  # the entire gate twice: two verifies and eight scan jobs per commit.
   verify:
     if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
     permissions:
       contents: read
-    concurrency:
-      group: verify-release-${{ github.workflow }}-${{ github.ref }}
-      cancel-in-progress: true
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-          fetch-depth: 0
-      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
-        with:
-          standalone: true
-      - uses: voidzero-dev/setup-vp@313600b80b104eadebb9111787d37a2e83e014ca # v1.17.0
-        with:
-          node-version-file: ".node-version"
-          cache: true
-          run-install: |
-            - args: ["--frozen-lockfile"]
-      - run: pnpm exec vp run ready
+    uses: ./.github/workflows/verify.yml
 
   scan:
     if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
     permissions:
       contents: read
     uses: uinaf/.github/.github/workflows/scan.yml@main
+
+  deploy:
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
+    needs: [verify, scan]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    environment:
+      name: production
+      url: https://attach.uinaf.dev
+    concurrency:
+      group: deploy-${{ github.repository }}-production
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+        with:
+          standalone: true
+
+      - uses: voidzero-dev/setup-vp@313600b80b104eadebb9111787d37a2e83e014ca # v1.17.0
+        with:
+          node-version-file: ".node-version"
+          cache: false
+          run-install: |
+            - args: ["--frozen-lockfile"]
+
+      - name: Deploy Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_D1_DATABASE_ID: ${{ vars.CLOUDFLARE_D1_DATABASE_ID }}
+          ALLOWED_GITHUB_USER_IDS: ${{ vars.ALLOWED_GITHUB_USER_IDS }}
+          ATTACH_PUBLIC_BASE: ${{ vars.ATTACH_PUBLIC_BASE }}
+        run: |
+          pnpm exec vp run -t @uinaf/attach-web#build
+          node apps/api/scripts/deploy.ts
 
   release:
     if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
