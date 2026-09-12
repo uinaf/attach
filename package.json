@@ -5,7 +5,8 @@
   "description": "Self-hosted Cloudflare kit for PR/validation media uploads",
   "type": "module",
   "scripts": {
-    "verify": "vp run ready",
+    "verify": "pnpm run audit && vp run ready",
+    "audit": "pnpm audit --audit-level high",
     "check": "vp run checks",
     "test": "vp run tests",
     "build": "vp run builds",
